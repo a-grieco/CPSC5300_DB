@@ -2,8 +2,6 @@
 #define __SHOW_STATEMENT_H__
 
 #include "SQLStatement.h"
-#include "../../../milestoneX/storage_engine.h"
-#include <algorithm>
 
 // Note: Implementations of constructors and destructors can be found in statements.cpp.
 namespace hsql {
@@ -19,7 +17,7 @@ namespace hsql {
         ShowStatement(EntityType type);
         virtual ~ShowStatement();
 
-	    ValueDict type[];
+        EntityType type;
         char* tableName; // default: NULL
     };
 

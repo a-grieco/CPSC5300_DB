@@ -79,6 +79,19 @@ public:
 	virtual DataType get_data_type() { return data_type; }
 	virtual void set_data_type(DataType data_type) { this->data_type = data_type; }
 
+	std::string get_string()
+	{
+		switch (data_type)
+		{
+		case TEXT:
+			return "TEXT";
+		case INT:
+			return "INT";
+		default:
+			throw DbException("Not a valid type.");
+		}
+	}
+
 protected:
 	DataType data_type;
 };

@@ -216,6 +216,7 @@
     <ClInclude Include="heap_storage.h" />
     <ClInclude Include="ParseTreeToString.h" />
     <ClInclude Include="schema_tables.h" />
+    <ClInclude Include="scopeguard.h" />
     <ClInclude Include="SQLExec.h" />
     <ClInclude Include="storage_engine.h" />
   </ItemGroup>

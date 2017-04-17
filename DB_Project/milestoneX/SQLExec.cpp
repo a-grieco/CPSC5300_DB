@@ -39,7 +39,21 @@ std::ostream &operator<<(std::ostream &out, const QueryResult &qres) {
 	return out;
 }
 
-QueryResult::~QueryResult() { /* FIXME */ }
+QueryResult::~QueryResult()
+{
+	if(column_names)
+	{
+		delete column_names;
+	}
+	if(column_attributes)
+	{
+		delete column_attributes;
+	}
+	if(rows)
+	{
+		delete rows;
+	}
+}
 
 QueryResult *SQLExec::execute(const hsql::SQLStatement *statement) throw(SQLExecError) {
 

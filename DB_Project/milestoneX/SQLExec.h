@@ -4,7 +4,6 @@
 #include <string>
 #include "SQLParser.h"
 #include "schema_tables.h"
-#include <set>
 
 
 class SQLExecError : public std::runtime_error {
@@ -45,12 +44,20 @@ public:
 
 protected:
     static Tables *tables;
+    static Indices *indices;
 
     static QueryResult *create(const hsql::CreateStatement *statement);
+    static QueryResult *create_table(const hsql::CreateStatement *statement);
+    static QueryResult *create_index(const hsql::CreateStatement *statement);
+
     static QueryResult *drop(const hsql::DropStatement *statement);
+    static QueryResult *drop_table(const hsql::DropStatement *statement);
+    static QueryResult *drop_index(const hsql::DropStatement *statement);
+
     static QueryResult *show(const hsql::ShowStatement *statement);
-	static QueryResult *show_tables(const hsql::ShowStatement *statement);
+    static QueryResult *show_tables();
     static QueryResult *show_columns(const hsql::ShowStatement *statement);
+    static QueryResult *show_index(const hsql::ShowStatement *statement);
 
     static void
     column_definition(const hsql::ColumnDefinition *col, Identifier &column_name, ColumnAttribute &column_attribute);

@@ -5,12 +5,6 @@
 #include <memory>
 #include <vector>
 
-#ifdef IN
-#undef IN
-#endif
-
-
-
 namespace hsql {
   struct SelectStatement;
 

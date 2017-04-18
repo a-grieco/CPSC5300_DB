@@ -2,7 +2,6 @@
 #define __CREATE_STATEMENT_H__
 
 #include "SQLStatement.h"
-//#include "../../../../../../../../../../Program Files/Oracle/Berkeley DB 12cR1 6.2.23/include/db_cxx.h"
 
 // Note: Implementations of constructors and destructors can be found in statements.cpp.
 namespace hsql {
@@ -31,7 +30,8 @@ namespace hsql {
     enum CreateType {
       kTable,
       kTableFromTbl, // Hyrise file format
-      kView
+      kView,
+      kIndex
     };
 
     CreateStatement(CreateType type);
@@ -41,8 +41,11 @@ namespace hsql {
     bool ifNotExists; // default: false
     char* filePath; // default: NULL
     char* tableName; // default: NULL
+    char* indexName; // default: NULL
+    char* indexType; // default: NULL
     std::vector<ColumnDefinition*>* columns; // default: NULL
     std::vector<char*>* viewColumns;
+    std::vector<char*>* indexColumns;
     SelectStatement* select;
   };
 

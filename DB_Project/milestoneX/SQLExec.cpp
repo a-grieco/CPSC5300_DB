@@ -1,294 +1,264 @@
-//
-// Adrienne Grieco
-// 4/16/2017
-//
 
 #include "SQLExec.h"
-#include <set>
-#include "scopeguard.h"
 
-Tables * SQLExec::tables = nullptr;
+Tables* SQLExec::tables = nullptr;
+
 
 std::ostream &operator<<(std::ostream &out, const QueryResult &qres) {
-	if (qres.column_names != nullptr) {
-		for (auto const &column_name : *qres.column_names)
-			out << column_name << " ";
-		out << std::endl << "+";
-		for (u_long i = 0; i < qres.column_names->size(); i++)
-			out << "------------+";
-		out << std::endl;
-		for (auto const &row : *qres.rows) {
-			for (auto const &column_name : *qres.column_names) {
-				Value value = row->at(column_name);
-				switch (value.data_type) {
-				case ColumnAttribute::INT:
-					out << value.n;
-					break;
-				case ColumnAttribute::TEXT:
-					out << "\"" << value.s << "\"";
-					break;
-				default:
-					out << "???";
-				}
-				out << " ";
-			}
-			out << std::endl;
-		}
-	}
-	out << qres.message;
-	return out;
+    if (qres.column_names != nullptr) {
+        for (auto const &column_name: *qres.column_names)
+            out << column_name << " ";
+        out << std::endl << "+";
+        for (int i = 0; i < qres.column_names->size(); i++)
+            out << "----------+";
+        out << std::endl;
+        for (auto const &row: *qres.rows) {
+            for (auto const &column_name: *qres.column_names) {
+                Value value = row->at(column_name);
+                switch (value.data_type) {
+                    case ColumnAttribute::INT:
+                        out << value.n;
+                        break;
+                    case ColumnAttribute::TEXT:
+                        out << "\"" << value.s << "\"";
+                        break;
+                    case ColumnAttribute::BOOLEAN:
+                        out << (value.n == 0 ? "false" : "true");
+                    default:
+                        out << "???";
+                }
+                out << " ";
+            }
+            out << std::endl;
+        }
+    }
+    out << qres.message;
+    return out;
 }
 
-QueryResult::~QueryResult()
-{
-	if(column_names)
-	{
-		delete column_names;
-	}
-	if(column_attributes)
-	{
-		delete column_attributes;
-	}
-	if(rows)
-	{
-		delete rows;
-	}
+QueryResult::~QueryResult() {
+    if (column_names != nullptr)
+        delete column_names;
+    if (column_attributes != nullptr)
+        delete column_attributes;
+    if (rows != nullptr) {
+        for (auto row: *rows)
+            delete row;
+        delete rows;
+    }
 }
+
 
 QueryResult *SQLExec::execute(const hsql::SQLStatement *statement) throw(SQLExecError) {
+    // initialize _tables table, if not yet present
+    if (SQLExec::tables == nullptr)
+        SQLExec::tables = new Tables();
 
-	if (SQLExec::tables == nullptr)
-	{
-		SQLExec::tables = new Tables();
-	}
+    try {
+        switch (statement->type()) {
+            case hsql::kStmtCreate:
+                return create((const hsql::CreateStatement *) statement);
+            case hsql::kStmtDrop:
+                return drop((const hsql::DropStatement *) statement);
+            case hsql::kStmtShow:
+                return show((const hsql::ShowStatement *) statement);
+            default:
+                return new QueryResult("not implemented");
+        }
+    } catch (DbRelationError& e) {
+        throw SQLExecError(std::string("DbRelationError: ") + e.what());
+    }
+}
 
-	try {
-		switch (statement->type()) {
-		case hsql::kStmtCreate:
-			return create((const hsql::CreateStatement *) statement);
-		case hsql::kStmtDrop:
-			return drop((const hsql::DropStatement *) statement);
-		case hsql::kStmtShow:
-			return show((const hsql::ShowStatement *) statement);
-		default:
-			return new QueryResult("not implemented");
-		}
-	}
-	catch (DbRelationError& e) {
-		throw SQLExecError(std::string("DbRelationError: ") + e.what());
-	}
+void SQLExec::column_definition(const hsql::ColumnDefinition *col, Identifier& column_name,
+                                ColumnAttribute& column_attribute) {
+    column_name = col->name;
+    switch (col->type) {
+        case hsql::ColumnDefinition::INT:
+            column_attribute.set_data_type(ColumnAttribute::INT);
+            break;
+        case hsql::ColumnDefinition::TEXT:
+            column_attribute.set_data_type(ColumnAttribute::TEXT);
+            break;
+        case hsql::ColumnDefinition::DOUBLE:
+        default:
+            throw SQLExecError("unrecognized data type");
+    }
 }
 
 QueryResult *SQLExec::create(const hsql::CreateStatement *statement) {
-	if (statement->type != hsql::CreateStatement::kTable)
-	{
-		throw SQLExecError("unrecognized CREATE type");
-	}
-
-	Identifier new_table_name = statement->tableName;
-	std::vector<hsql::ColumnDefinition*>* new_table_columns =
-		statement->columns;
-
-	// insert new table into _tables
-	ValueDict new_table;
-	new_table["table_name"] = Value(new_table_name);
-	Handle new_table_del = tables->insert(&new_table);
-
-	// delete table from _tables if exception is thrown
-	auto guard_insert_into_tables = scopeGuard([&]() {
-		tables->del(new_table_del);
-	});
-
-	// insert new table's columns into _columns
-	DbRelation& columns_relation = tables->get_table(Columns::TABLE_NAME);
-
-	std::string column_name;
-	hsql::ColumnDefinition::DataType column_type;
-	std::string data_type;
-
-	Handles new_table_columns_del;
-
-	for (auto const &new_table_column : *new_table_columns)
-	{
-		column_name = new_table_column->name;
-		column_type = new_table_column->type;
-
-		switch (column_type)
-		{
-		case hsql::ColumnDefinition::UNKNOWN:
-			data_type = "UNKNOWN";
-			break;
-		case hsql::ColumnDefinition::TEXT:
-			data_type = "TEXT";
-			break;
-		case hsql::ColumnDefinition::INT:
-			data_type = "INT";
-			break;
-		case hsql::ColumnDefinition::DOUBLE:
-			data_type = "DOUBLE";
-			break;
-		default:;
-		}
-
-		ValueDict row;
-		row["table_name"] = new_table_name;
-		row["column_name"] = column_name;
-		row["data_type"] = data_type;
-		Handle new_table_column_del = columns_relation.insert(&row);
-		new_table_columns_del.push_back(new_table_column_del);
-	}
-
-	// delete rows added to _columns if exception thrown
-	auto guard_insert_into_columns = scopeGuard([&]() {
-		for (auto const column_del : new_table_columns_del)
-		{
-			columns_relation.del(column_del);
-		}
-	});
-
-	// create new table
-	DbRelation& new_table_relation = tables->get_table(new_table_name);
-	new_table_relation.create();
-
-	// delete new table if exception thrown
-	auto guard_add_table = scopeGuard([&]() {
-		new_table_relation.drop();
-	});
-
-	guard_insert_into_tables.dismiss();
-	guard_insert_into_columns.dismiss();
-	guard_add_table.dismiss();
-
-	return new QueryResult("created " + new_table_name);
+    switch(statement->type) {
+        case hsql::CreateStatement::kTable:
+            return create_table(statement);
+        case hsql::CreateStatement::kIndex:
+            return create_index(statement);
+        default:
+            return new QueryResult("Only CREATE TABLE and CREATE INDEX are implemented");
+    }
 }
 
+QueryResult *SQLExec::create_table(const hsql::CreateStatement *statement) {
+    Identifier table_name = statement->tableName;
+    ColumnNames column_names;
+    ColumnAttributes column_attributes;
+    Identifier column_name;
+    ColumnAttribute column_attribute;
+    for (hsql::ColumnDefinition *col : *statement->columns) {
+        column_definition(col, column_name, column_attribute);
+        column_names.push_back(column_name);
+        column_attributes.push_back(column_attribute);
+    }
+
+    // Add to schema: _tables and _columns
+    ValueDict row;
+    row["table_name"] = table_name;
+    Handle t_handle = SQLExec::tables->insert(&row);  // Insert into _tables
+    try {
+        Handles c_handles;
+        DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
+        try {
+            for (uint i = 0; i < column_names.size(); i++) {
+                row["column_name"] = column_names[i];
+                row["data_type"] = Value(column_attributes[i].get_data_type() == ColumnAttribute::INT ? "INT" : "TEXT");
+                c_handles.push_back(columns.insert(&row));  // Insert into _columns
+            }
+
+            // Finally, actually create the relation
+            DbRelation& table = SQLExec::tables->get_table(table_name);
+            if (statement->ifNotExists)
+                table.create_if_not_exists();
+            else
+                table.create();
+
+        } catch (std::exception& e) {
+            // attempt to remove from _columns
+            try {
+                for (auto const &handle: c_handles)
+                    columns.del(handle);
+            } catch (...) {}
+            throw;
+        }
+
+    } catch (std::exception& e) {
+        try {
+            // attempt to remove from _tables
+            SQLExec::tables->del(t_handle);
+        } catch (...) {}
+        throw;
+    }
+    return new QueryResult("created " + table_name);
+}
+
+QueryResult *SQLExec::create_index(const hsql::CreateStatement *statement) {
+    return new QueryResult("create index not implemented");  // FIXME
+}
+
+// DROP ...
 QueryResult *SQLExec::drop(const hsql::DropStatement *statement) {
-	if (statement->type != hsql::DropStatement::kTable)
-	{
-		throw SQLExecError("unrecognized DROP type");
-	}
+    switch(statement->type) {
+        case hsql::DropStatement::kTable:
+            return drop_table(statement);
+        case hsql::DropStatement::kIndex:
+            return drop_index(statement);
+        default:
+            return new QueryResult("Only DROP TABLE and CREATE INDEX are implemented");
+    }
+}
 
-	Identifier table_name = statement->name;
-	ValueDict table_to_drop;
-	table_to_drop["table_name"] = Value(table_name);
+QueryResult *SQLExec::drop_table(const hsql::DropStatement *statement) {
+    Identifier table_name = statement->name;
+    if (table_name == Tables::TABLE_NAME || table_name == Columns::TABLE_NAME)
+        throw SQLExecError("cannot drop a schema table");
 
-	Handles* drop_handles = tables->select(&table_to_drop);
-	if (drop_handles->size() > 0)
-	{
-		DbRelation& columns_relation = tables->get_table(Columns::TABLE_NAME);
+    ValueDict where;
+    where["table_name"] = Value(table_name);
 
-		Handles* col_rows_to_delete = columns_relation.select(&table_to_drop);
+    // get the table
+    DbRelation& table = SQLExec::tables->get_table(table_name);
 
-		for (auto const col_row : (*col_rows_to_delete))
-		{
-			columns_relation.del(col_row);
-		}
+    /* FIXME - drop any indices. */
 
-		try
-		{
-			DbRelation& drop_table_relation = tables->get_table(table_name);
-			drop_table_relation.drop();
-		}
-		catch (...) {}
+    // remove from _columns schema
+    DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
+    Handles* handles = columns.select(&where);
+    for (auto const& handle: *handles)
+        columns.del(handle);
+    delete handles;
 
-		// delete table from _tables
-		Handle drop_handle = drop_handles->at(0);
-		tables->del(drop_handle);
+    // remove table
+    table.drop();
 
-		return new QueryResult("dropped " + table_name);
-	}
+    // finally, remove from _tables schema
+    SQLExec::tables->del(*SQLExec::tables->select(&where)->begin()); // expect only one row from select
 
-	return new QueryResult("unable to drop " + table_name +
-		", table does not exist");
+    return new QueryResult(std::string("dropped ") + table_name);
+}
+
+QueryResult *SQLExec::drop_index(const hsql::DropStatement *statement) {
+    return new QueryResult("drop index not implemented");  // FIXME
 }
 
 QueryResult *SQLExec::show(const hsql::ShowStatement *statement) {
-
-	switch (statement->type)
-	{
-	case hsql::ShowStatement::kTables:
-		return show_tables(statement);
-	case hsql::ShowStatement::kColumns:
-		return show_columns(statement);
-	case hsql::ShowStatement::kIndex:
-	default:
-		return new QueryResult("statement type not found");
-	}
+    switch (statement->type) {
+        case hsql::ShowStatement::kTables:
+            return show_tables();
+        case hsql::ShowStatement::kColumns:
+            return show_columns(statement);
+        case hsql::ShowStatement::kIndex:
+            return show_index(statement);
+        default:
+            throw SQLExecError("unrecognized SHOW type");
+    }
 }
 
-// returns true if the given name exists in the set and needs to be filtered
-// (i.e. if name is "_tables" and set has "_tables" & "_columns", return true)
-bool filtered(const std::string& name,
-	const std::set<std::basic_string<char>>& set)
-{
-	std::set<std::basic_string<char>>::iterator it = set.find(name);
-	if (it == set.end())
-	{
-		return false;	// name not found, no need to filter
-	}
-	return true;	// name found, filter
+QueryResult *SQLExec::show_index(const hsql::ShowStatement *statement) {
+    return new QueryResult("show index not implemented");  // FIXME
 }
 
-QueryResult* SQLExec::show_tables(const hsql::ShowStatement* statement)
-{
-	// TODO: fix memeory leak QueryDestructor
-	ValueDicts* rows = new ValueDicts;
+QueryResult *SQLExec::show_tables() {
+    ColumnNames* column_names = new ColumnNames;
+    column_names->push_back("table_name");
 
-	ColumnNames* column_names = new ColumnNames;
-	ColumnAttributes* column_attributes = new ColumnAttributes;
-	tables->get_columns(tables->TABLE_NAME, *column_names, *column_attributes);
+    ColumnAttributes* column_attributes = new ColumnAttributes;
+    column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
 
-	Handles* handles = tables->select();
+    Handles* handles = SQLExec::tables->select();
+    u_long n = handles->size() - 2;
 
-	std::set<std::string> filter_set{ "_tables", "_columns" };
-
-	int count = 0;	// track number of rows filtered
-
-	for (auto const& handle : *handles)
-	{
-		ValueDict* row = tables->project(handle);
-		if (!filtered((row->at("table_name")).s, filter_set))
-		{
-			(*rows).push_back(row);
-
-		}
-		else
-		{
-			count++;
-		}
-	}
-
-	std::string message = "successfully returned " +
-		std::to_string(handles->size() - count) + " rows";
-
-	return new QueryResult(column_names, column_attributes, rows, message);
+    ValueDicts* rows = new ValueDicts;
+    for (auto const& handle: *handles) {
+        ValueDict* row = SQLExec::tables->project(handle, column_names);
+        Identifier table_name = row->at("table_name").s;
+        if (table_name != Tables::TABLE_NAME && table_name != Columns::TABLE_NAME)
+            rows->push_back(row);
+    }
+    delete handles;
+    return new QueryResult(column_names, column_attributes, rows,
+                           "successfully returned " + std::to_string(n) + " rows");
 }
 
-QueryResult* SQLExec::show_columns(const hsql::ShowStatement* statement)
-{
-	DbRelation& table = tables->get_table(Columns::TABLE_NAME);
+QueryResult *SQLExec::show_columns(const hsql::ShowStatement *statement) {
+    DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
 
-	std::string table_name = statement->tableName;
-	Value input_table_name(table_name);
+    ColumnNames* column_names = new ColumnNames;
+    column_names->push_back("table_name");
+    column_names->push_back("column_name");
+    column_names->push_back("data_type");
 
-	ValueDict* results = new ValueDict;
-	(*results)["table_name"] = input_table_name;
+    ColumnAttributes* column_attributes = new ColumnAttributes;
+    column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
 
-	Handles* handles = table.select(results);
+    ValueDict where;
+    where["table_name"] = Value(statement->tableName);
+    Handles* handles = columns.select(&where);
+    u_long n = handles->size();
 
-	ValueDicts* rows = new ValueDicts;
-	for (auto const& handle : *handles)
-	{
-		ValueDict* row = table.project(handle);
-		(*rows).push_back(row);
-	}
-
-	ColumnNames* column_names = new ColumnNames;
-	ColumnAttributes* column_attributes = new ColumnAttributes;
-	tables->get_columns(Columns::TABLE_NAME, *column_names, *column_attributes);
-
-	std::string message = "successfully returned " +
-		std::to_string(handles->size()) + " rows";
-
-	return new QueryResult(column_names, column_attributes, rows, message);
+    ValueDicts* rows = new ValueDicts;
+    for (auto const& handle: *handles) {
+        ValueDict* row = columns.project(handle, column_names);
+        rows->push_back(row);
+    }
+    delete handles;
+    return new QueryResult(column_names, column_attributes, rows,
+                           "successfully returned " + std::to_string(n) + " rows");
 }

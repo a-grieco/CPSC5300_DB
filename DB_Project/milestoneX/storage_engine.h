@@ -17,7 +17,7 @@
 #include <vector>
 #include "db_cxx.h"
 
-typedef uint32_t uint;
+typedef unsigned int uint;
 
 extern DbEnv* _DB_ENV;
 const uint DB_BLOCK_SZ = 4096;
@@ -28,7 +28,7 @@ typedef std::length_error DbBlockNoRoomError;
 
 class DbBlock {
 public:
-	DbBlock(Dbt &block, BlockID block_id, bool is_new = false) : block(block), block_id(block_id) {}
+	DbBlock(Dbt &block, BlockID block_id, bool is_new=false) : block(block), block_id(block_id) {}
 	virtual ~DbBlock() {}
 
 	virtual RecordID add(const Dbt* data) throw(DbBlockNoRoomError) = 0;
@@ -37,9 +37,9 @@ public:
 	virtual void del(RecordID record_id) = 0;
 	virtual RecordIDs* ids() const = 0;
 
-	virtual Dbt* get_block() { return &block; }
-	virtual void* get_data() { return block.get_data(); }
-	virtual BlockID get_block_id() { return block_id; }
+	virtual Dbt* get_block() {return &block;}
+	virtual void* get_data() {return block.get_data();}
+	virtual BlockID get_block_id() {return block_id;}
 
 protected:
 	Dbt block;
@@ -70,27 +70,15 @@ class ColumnAttribute {
 public:
 	enum DataType {
 		INT,
-		TEXT
+		TEXT,
+        BOOLEAN
 	};
-	ColumnAttribute() : data_type(INT) {}
+    ColumnAttribute() : data_type(INT) {}
 	ColumnAttribute(DataType data_type) : data_type(data_type) {}
 	virtual ~ColumnAttribute() {}
 
 	virtual DataType get_data_type() { return data_type; }
-	virtual void set_data_type(DataType data_type) { this->data_type = data_type; }
-
-	std::string get_string()
-	{
-		switch (data_type)
-		{
-		case TEXT:
-			return "TEXT";
-		case INT:
-			return "INT";
-		default:
-			throw DbException("Not a valid type.");
-		}
-	}
+	virtual void set_data_type(DataType data_type) {this->data_type = data_type;}
 
 protected:
 	DataType data_type;
@@ -102,12 +90,14 @@ public:
 	int32_t n;
 	std::string s;
 
-	Value() : n(0) { data_type = ColumnAttribute::INT; }
-	Value(int32_t n) : n(n) { data_type = ColumnAttribute::INT; }
-	Value(std::string s) : s(s) { data_type = ColumnAttribute::TEXT; }
+	Value() : n(0) {data_type = ColumnAttribute::INT;}
+	Value(int32_t n) : n(n) {data_type = ColumnAttribute::INT;}
+	Value(std::string s) : s(s) {data_type = ColumnAttribute::TEXT; }
+    Value(const char *s) : s(s) {data_type = ColumnAttribute::TEXT; }
+    Value(bool b) : n(b ? 1: 0) {data_type = ColumnAttribute::BOOLEAN; }
 
 	bool operator==(const Value &other) const;
-	bool operator!=(const Value &other) const;
+    bool operator!=(const Value &other) const;
 };
 
 typedef std::string Identifier;
@@ -125,7 +115,7 @@ public:
 
 class DbRelation {
 public:
-	DbRelation(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes) :
+	DbRelation(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes ) :
 		table_name(table_name), column_names(column_names), column_attributes(column_attributes) {}
 	virtual ~DbRelation() {}
 
@@ -144,10 +134,42 @@ public:
 	virtual Handles* select(const ValueDict* where) = 0;
 	virtual ValueDict* project(Handle handle) = 0;
 	virtual ValueDict* project(Handle handle, const ColumnNames* column_names) = 0;
-	virtual ValueDict* project(Handle handle, const ValueDict* column_names_from_dict);
+    virtual ValueDict* project(Handle handle, const ValueDict* column_names_from_dict);
+
+    virtual const ColumnNames& get_column_names() const { return column_names; }
+    virtual const ColumnAttributes get_column_attributes() const { return column_attributes; }
 
 protected:
 	Identifier table_name;
 	ColumnNames column_names;
 	ColumnAttributes column_attributes;
+};
+
+class DbIndex {
+public:
+    static const uint MAX_COMPOSITE = 32U; // maximum number of columns in a composite index
+
+    DbIndex(DbRelation& relation, Identifier name, ColumnNames key_columns, bool unique)
+            : relation(relation), name(name), key_columns(key_columns), unique(unique) {}
+    virtual ~DbIndex() {}
+
+    virtual void create() = 0;
+    virtual void drop() = 0;
+
+    virtual void open() = 0;
+    virtual void close() = 0;
+
+    virtual Handles* lookup(ValueDict* key_values) const = 0;
+    virtual Handles* range(ValueDict* min_key, ValueDict* max_key) const {
+        throw DbRelationError("range index query not supported");
+    }
+
+    virtual void insert(Handle handle) = 0;
+    virtual void del(Handle handle) = 0;
+
+protected:
+    DbRelation& relation;
+    Identifier name;
+    ColumnNames key_columns;
+    bool unique;
 };

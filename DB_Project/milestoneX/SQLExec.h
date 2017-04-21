@@ -61,4 +61,6 @@ protected:
 
     static void
     column_definition(const hsql::ColumnDefinition *col, Identifier &column_name, ColumnAttribute &column_attribute);
+	
+	static void remove_rows(const Identifier name, const Identifier index_name);
 };

@@ -248,7 +248,7 @@ QueryResult *SQLExec::drop_table(const hsql::DropStatement *statement) {
 	// get the table
 	DbRelation& table = SQLExec::tables->get_table(table_name);
 
-	/* FIXME - drop any indices. */
+	// drop any indices
 	IndexNames index_names = indices->get_index_names(table_name);
 	for(auto const index_name : index_names)
 	{
@@ -297,25 +297,7 @@ QueryResult *SQLExec::drop_index(const hsql::DropStatement *statement) {
 
 	return new QueryResult("dropped index " + 
 		std::string(statement->indexName));
-
-	//ValueDict where;
-	//where["table_name"] = statement->name;
-	//where["index_name"] = statement->indexName;
-	////DbRelation& indices = tables->get_table(Indices::TABLE_NAME);
-	////indices.
-	//Handles* idx_handles = indices->select();  //->select(&where);
-
-	//for (auto const& idx_handle : *idx_handles)
-	//{
-	//	indices->del(idx_handle);
-	//}
-	//delete idx_handles;
-
-	//return new QueryResult("dropped index " + 
-	//	std::string(statement->indexName));
 }
-
-
 
 QueryResult *SQLExec::show(const hsql::ShowStatement *statement) {
 	switch (statement->type) {

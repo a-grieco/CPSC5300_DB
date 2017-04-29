@@ -90,19 +90,18 @@ Value SQLExec::get_value(std::vector<hsql::Expr*>::value_type expr)
 	case hsql::kExprLiteralInt:
 		return Value((int32_t)expr->ival);
 	default:
-		throw DbRelationError("only accepting string or int value types right now");
+		throw DbRelationError("currently accepting only string or int values");
 	}
-
 }
 
-ColumnNames* SQLExec::get_column_names(std::vector<char*>* columns, const DbRelation& table)
+ColumnNames* SQLExec::get_column_names(std::vector<char*>* columns, 
+	const DbRelation& table)
 {
 	ColumnNames* column_names = new ColumnNames;
 
 	if (columns == NULL)
 	{
 		*column_names = table.get_column_names();
-
 	}
 	else
 	{
@@ -111,20 +110,17 @@ ColumnNames* SQLExec::get_column_names(std::vector<char*>* columns, const DbRela
 			column_names->push_back(column);
 		}
 	}
-
 	return column_names;
 }
 
 QueryResult *SQLExec::insert(const hsql::InsertStatement *statement) {
 	DbRelation& table = tables->get_table(statement->tableName);
-
 	std::vector<char*>* columns = statement->columns;
-	ColumnNames* column_names = get_column_names(columns, table);
-	//ColumnNames* column_names = new ColumnNames;
-	Handle handle;
-	int num_indices = 0;
 
+	ColumnNames* column_names = get_column_names(columns, table);
 	std::vector<hsql::Expr*>* values = statement->values;
+
+	Handle handle;	
 	if (column_names->size() == values->size())
 	{
 		ValueDict row;
@@ -133,8 +129,11 @@ QueryResult *SQLExec::insert(const hsql::InsertStatement *statement) {
 			Value value = get_value(statement->values->at(i));
 			row[(*column_names)[i]] = value;
 		}
-
 		handle = table.insert(&row);
+	}
+	else
+	{
+		throw DbRelationError("number of columns and number of values do not match");
 	}
 
 	IndexNames index_names = indices->get_index_names(statement->tableName);
@@ -142,13 +141,11 @@ QueryResult *SQLExec::insert(const hsql::InsertStatement *statement) {
 	{
 		DbIndex& index = indices->get_index(statement->tableName, index_name);
 		index.insert(handle);
-		num_indices++;
 	}
 
-	std::string table_name = statement->tableName;
 	std::string message = "successfully inserted 1 row into " +
 		(std::string) statement->tableName + " and " +
-		std::to_string(num_indices) + " indices";
+		std::to_string(index_names.size()) + " indices";
 
 	return new QueryResult(message);
 }
@@ -160,7 +157,7 @@ QueryResult *SQLExec::del(const hsql::DeleteStatement *statement) {
 	hsql::Expr* expression = statement->expr;
 
 	// if no expression, select all handles
-	if (expression != NULL)
+	if (expression != nullptr)
 	{
 		plan = new EvalPlan(get_where_conjunction(expression), plan);
 	}
@@ -185,7 +182,9 @@ QueryResult *SQLExec::del(const hsql::DeleteStatement *statement) {
 	std::string message = "successfully deleted " + std::to_string(handles->size()) +
 		" rows from " + statement->tableName + " and " + 
 		std::to_string(index_names.size()) + " indices";
-	return new QueryResult(message);  // FIXME
+	delete handles;
+
+	return new QueryResult(message); 
 }
 
 ValueDict* SQLExec::get_where_conjunction(hsql::Expr* const expr)
@@ -194,7 +193,8 @@ ValueDict* SQLExec::get_where_conjunction(hsql::Expr* const expr)
 	return get_where_conjunction_helper(expr, *where);
 }
 
-ValueDict* SQLExec::get_where_conjunction_helper(hsql::Expr* const expr, ValueDict& where)
+ValueDict* SQLExec::get_where_conjunction_helper(hsql::Expr* const expr, 
+	ValueDict& where)
 {
 	if (expr->type == hsql::kExprOperator)
 	{
@@ -232,7 +232,7 @@ QueryResult *SQLExec::select(const hsql::SelectStatement *statement) {
 	std::vector<hsql::Expr*>* select_list = statement->selectList;
 	ColumnNames* column_names = new ColumnNames;
 
-	// if *, Project All
+	// if * Project All
 	if (select_list->at(0)->type == hsql::kExprStar)
 	{
 		*column_names = table.get_column_names();

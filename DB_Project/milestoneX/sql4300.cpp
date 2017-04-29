@@ -13,16 +13,12 @@
 #include "ParseTreeToString.h"
 #include "SQLExec.h"
 
+const bool RUN_TEST = false;
+
 void initialize_environment(char *envHome);
 
+// test cases run when RUN_TEST is set to true
 std::vector<std::string> test_cases = {
-	 
-	"create table goober (x integer, y integer, z integer)",
-	"insert into goober VALUES (4,5,6)",
-	"insert into goober VALUES (9,9,9)",
-	"insert into goober (z,y,x) VALUES (9,8,7)",
-
-	// start of test cases
 	"show tables", 
 	"create table foo (id int, data text)",
 	"show tables",
@@ -39,8 +35,10 @@ std::vector<std::string> test_cases = {
 	"select * from foo where id=99 and data=\"nine\"",
 	"select id from foo",
 	"select data from foo where id=1",
+	"delete from foo where id=1",
 	"select * from foo",
 	"delete from foo",
+	"select * from foo",
 	"insert into foo values (2, \"Two\"); insert into foo values (3, \"Three\"); insert into foo values (99, \"wowzers, Penny!!\")",
 	"select * from foo",
 	"drop index fz from foo",
@@ -48,10 +46,8 @@ std::vector<std::string> test_cases = {
 	"insert into foo (id) VALUES (100)",
 	"select * from foo",
 	"drop table foo",
-	"show tables",
-	"quit"
+	"show tables"
 };
-
 
 int main(int argc, char *argv[]) {
 
@@ -61,10 +57,23 @@ int main(int argc, char *argv[]) {
     }
     initialize_environment(argv[1]);
 
+	// set RUN_TEST to true to run test cases
+	// (will allow additional SQL commands when complete)
+	int test_count = 0;
+
     while (true) {
         std::cout << "SQL> ";
-        std::string query;
-        std::getline(std::cin, query);
+		std::string query;
+		if(RUN_TEST==true && test_count < test_cases.size())
+		{
+			query = test_cases.at(test_count);
+			std::cout << query << std::endl;
+			++test_count;
+		} 
+    	else
+		{
+			std::getline(std::cin, query);
+		}        
         if (query.length() == 0)
             continue;
         if (query == "quit")

@@ -124,18 +124,6 @@ QueryResult *SQLExec::insert(const hsql::InsertStatement *statement) {
 	Handle handle;
 	int num_indices = 0;
 
-	//if (columns == NULL)
-	//{
-	//	*column_names = table.get_column_names();
-
-	//}
-	//else
-	//{
-	//	for (auto const& column : *columns)
-	//	{
-	//		column_names->push_back(column);
-	//	}
-	//}
 	std::vector<hsql::Expr*>* values = statement->values;
 	if (column_names->size() == values->size())
 	{
@@ -166,7 +154,38 @@ QueryResult *SQLExec::insert(const hsql::InsertStatement *statement) {
 }
 
 QueryResult *SQLExec::del(const hsql::DeleteStatement *statement) {
-	return new QueryResult("DELETE statement not yet implemented");  // FIXME
+	DbRelation& table = tables->get_table(statement->tableName);
+	EvalPlan *plan = new EvalPlan(table);
+
+	hsql::Expr* expression = statement->expr;
+
+	// if no expression, select all handles
+	if (expression != NULL)
+	{
+		plan = new EvalPlan(get_where_conjunction(expression), plan);
+	}
+	
+	EvalPlan *optimized = plan->optimize();
+	EvalPipeline pipeline = optimized->pipeline();
+
+	// now delete all the handles
+	IndexNames index_names = SQLExec::indices->get_index_names(statement->tableName);
+
+	Handles *handles = pipeline.second;
+	for (auto const & handle : *handles)
+	{
+		for(auto const& index_name : index_names)
+		{
+			DbIndex& index = indices->get_index(statement->tableName, index_name);
+			index.del(handle);
+		}
+		table.del(handle);
+	}
+
+	std::string message = "successfully deleted " + std::to_string(handles->size()) +
+		" rows from " + statement->tableName + " and " + 
+		std::to_string(index_names.size()) + " indices";
+	return new QueryResult(message);  // FIXME
 }
 
 ValueDict* SQLExec::get_where_conjunction(hsql::Expr* const expr)
@@ -222,7 +241,6 @@ QueryResult *SQLExec::select(const hsql::SelectStatement *statement) {
 	// otherwise Project the select list
 	else
 	{
-		
 		for (auto select : *select_list)
 		{
 			column_names->push_back(select->name);
@@ -234,11 +252,11 @@ QueryResult *SQLExec::select(const hsql::SelectStatement *statement) {
 	ValueDicts* rows = optimized->evaluate();
 
 	ColumnAttributes* column_attributes = table.get_column_attributes(*column_names);
-	
-	std::string message = "successfully returned " + 
+
+	std::string message = "successfully returned " +
 		std::to_string(rows->size()) + " rows";
 
-	return new QueryResult(column_names, column_attributes, rows,message);  
+	return new QueryResult(column_names, column_attributes, rows, message);
 }
 
 void SQLExec::column_definition(const hsql::ColumnDefinition *col, Identifier& column_name,

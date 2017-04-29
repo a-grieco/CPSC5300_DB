@@ -15,6 +15,43 @@
 
 void initialize_environment(char *envHome);
 
+std::vector<std::string> test_cases = {
+	 
+	"create table goober (x integer, y integer, z integer)",
+	"insert into goober VALUES (4,5,6)",
+	"insert into goober VALUES (9,9,9)",
+	"insert into goober (z,y,x) VALUES (9,8,7)",
+
+	// start of test cases
+	"show tables", 
+	"create table foo (id int, data text)",
+	"show tables",
+	"show columns from foo",
+	"create index fx on foo (id)",
+	"create index fz on foo (data)",
+	"show index from foo",
+	"insert into foo (id, data) values (1,\"one\")",
+	"select * from foo",
+	"insert into foo values (2, \"Two\"); insert into foo values (3, \"Three\"); insert into foo values (99, \"wowzers, Penny!!\")",
+	"select * from foo",
+	"select * from foo where id=3",
+	"select * from foo where id=1 and data=\"one\"",
+	"select * from foo where id=99 and data=\"nine\"",
+	"select id from foo",
+	"select data from foo where id=1",
+	"select * from foo",
+	"delete from foo",
+	"insert into foo values (2, \"Two\"); insert into foo values (3, \"Three\"); insert into foo values (99, \"wowzers, Penny!!\")",
+	"select * from foo",
+	"drop index fz from foo",
+	"show index from foo",
+	"insert into foo (id) VALUES (100)",
+	"select * from foo",
+	"drop table foo",
+	"show tables",
+	"quit"
+};
+
 
 int main(int argc, char *argv[]) {
 

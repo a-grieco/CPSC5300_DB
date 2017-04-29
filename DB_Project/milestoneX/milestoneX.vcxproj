@@ -205,6 +205,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EvalPlan.cpp" />
     <ClCompile Include="heap_storage.cpp" />
     <ClCompile Include="ParseTreeToString.cpp" />
     <ClCompile Include="schema_tables.cpp" />
@@ -213,6 +214,7 @@
     <ClCompile Include="storage_engine.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EvalPlan.h" />
     <ClInclude Include="heap_storage.h" />
     <ClInclude Include="ParseTreeToString.h" />
     <ClInclude Include="schema_tables.h" />

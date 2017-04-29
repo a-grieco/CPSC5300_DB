@@ -1,6 +1,6 @@
-#line 2 "flex_lexer.cpp"
+#line 1 "flex_lexer.cpp"
 
-#line 4 "flex_lexer.cpp"
+#line 3 "flex_lexer.cpp"
 
 #define  YY_INT_ALIGNED short int
 
@@ -9,10 +9,88 @@
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 6
-#define YY_FLEX_SUBMINOR_VERSION 1
+#define YY_FLEX_SUBMINOR_VERSION 3
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
+
+    #define yy_create_buffer hsql__create_buffer
+
+    #define yy_delete_buffer hsql__delete_buffer
+
+    #define yy_scan_buffer hsql__scan_buffer
+
+    #define yy_scan_string hsql__scan_string
+
+    #define yy_scan_bytes hsql__scan_bytes
+
+    #define yy_init_buffer hsql__init_buffer
+
+    #define yy_flush_buffer hsql__flush_buffer
+
+    #define yy_load_buffer_state hsql__load_buffer_state
+
+    #define yy_switch_to_buffer hsql__switch_to_buffer
+
+    #define yypush_buffer_state hsql_push_buffer_state
+
+    #define yypop_buffer_state hsql_pop_buffer_state
+
+    #define yyensure_buffer_stack hsql_ensure_buffer_stack
+
+    #define yylex hsql_lex
+
+    #define yyrestart hsql_restart
+
+    #define yylex_init hsql_lex_init
+
+    #define yylex_init_extra hsql_lex_init_extra
+
+    #define yylex_destroy hsql_lex_destroy
+
+    #define yyget_debug hsql_get_debug
+
+    #define yyset_debug hsql_set_debug
+
+    #define yyget_extra hsql_get_extra
+
+    #define yyset_extra hsql_set_extra
+
+    #define yyget_in hsql_get_in
+
+    #define yyset_in hsql_set_in
+
+    #define yyget_out hsql_get_out
+
+    #define yyset_out hsql_set_out
+
+    #define yyget_leng hsql_get_leng
+
+    #define yyget_text hsql_get_text
+
+    #define yyget_lineno hsql_get_lineno
+
+    #define yyset_lineno hsql_set_lineno
+
+        #define yyget_column hsql_get_column
+
+        #define yyset_column hsql_set_column
+
+    #define yywrap hsql_wrap
+
+    #define yyget_lval hsql_get_lval
+
+    #define yyset_lval hsql_set_lval
+
+    #define yyget_lloc hsql_get_lloc
+
+    #define yyset_lloc hsql_set_lloc
+
+    #define yyalloc hsql_alloc
+
+    #define yyrealloc hsql_realloc
+
+    #define yyfree hsql_free
 
 /* First, we deal with  platform-specific or compiler-specific issues. */
 
@@ -100,12 +178,10 @@ typedef unsigned int flex_uint32_t;
 /* Returned upon end-of-file. */
 #define YY_NULL 0
 
-/* Promotes a possibly negative, possibly signed char to an unsigned
- * integer for use as an array index.  If the signed char is negative,
- * we want to instead treat it as an 8-bit unsigned char, hence the
- * double cast.
+/* Promotes a possibly negative, possibly signed char to an
+ *   integer in range [0..255] for use as an array index.
  */
-#define YY_SC_TO_UI(c) ((unsigned int) (unsigned char) c)
+#define YY_SC_TO_UI(c) ((YY_CHAR) (c))
 
 /* An opaque pointer. */
 #ifndef YY_TYPEDEF_YY_SCANNER_T
@@ -129,20 +205,16 @@ typedef void* yyscan_t;
  * definition of BEGIN.
  */
 #define BEGIN yyg->yy_start = 1 + 2 *
-
 /* Translate the current start state into a value that can be later handed
  * to BEGIN to return to the state.  The YYSTATE alias is for lex
  * compatibility.
  */
 #define YY_START ((yyg->yy_start - 1) / 2)
 #define YYSTATE YY_START
-
 /* Action number for EOF rule of a given start state. */
 #define YY_STATE_EOF(state) (YY_END_OF_BUFFER + state + 1)
-
 /* Special action meaning "start processing a new file". */
 #define YY_NEW_FILE hsql_restart(yyin ,yyscanner )
-
 #define YY_END_OF_BUFFER_CHAR 0
 
 /* Size of default input buffer. */
@@ -175,7 +247,7 @@ typedef size_t yy_size_t;
 #define EOB_ACT_CONTINUE_SCAN 0
 #define EOB_ACT_END_OF_FILE 1
 #define EOB_ACT_LAST_MATCH 2
-
+    
     #define YY_LESS_LINENO(n)
     #define YY_LINENO_REWIND_TO(ptr)
     
@@ -192,7 +264,6 @@ typedef size_t yy_size_t;
 		YY_DO_BEFORE_ACTION; /* set up yytext again */ \
 		} \
 	while ( 0 )
-
 #define unput(c) yyunput( c, yyg->yytext_ptr , yyscanner )
 
 #ifndef YY_STRUCT_YY_BUFFER_STATE
@@ -235,7 +306,7 @@ struct yy_buffer_state
 
     int yy_bs_lineno; /**< The line count. */
     int yy_bs_column; /**< The column count. */
-    
+
 	/* Whether to try to fill the input buffer when we reach the
 	 * end of it.
 	 */
@@ -269,36 +340,33 @@ struct yy_buffer_state
 #define YY_CURRENT_BUFFER ( yyg->yy_buffer_stack \
                           ? yyg->yy_buffer_stack[yyg->yy_buffer_stack_top] \
                           : NULL)
-
 /* Same as previous macro, but useful when we know that the buffer stack is not
  * NULL or when we need an lvalue. For internal use only.
  */
 #define YY_CURRENT_BUFFER_LVALUE yyg->yy_buffer_stack[yyg->yy_buffer_stack_top]
 
-void hsql_restart (FILE *input_file ,yyscan_t yyscanner );
-void hsql__switch_to_buffer (YY_BUFFER_STATE new_buffer ,yyscan_t yyscanner );
-YY_BUFFER_STATE hsql__create_buffer (FILE *file,int size ,yyscan_t yyscanner );
-void hsql__delete_buffer (YY_BUFFER_STATE b ,yyscan_t yyscanner );
-void hsql__flush_buffer (YY_BUFFER_STATE b ,yyscan_t yyscanner );
-void hsql_push_buffer_state (YY_BUFFER_STATE new_buffer ,yyscan_t yyscanner );
-void hsql_pop_buffer_state (yyscan_t yyscanner );
+void hsql_restart ( FILE *input_file , yyscan_t yyscanner );
+void hsql__switch_to_buffer ( YY_BUFFER_STATE new_buffer , yyscan_t yyscanner );
+YY_BUFFER_STATE hsql__create_buffer ( FILE *file, int size , yyscan_t yyscanner );
+void hsql__delete_buffer ( YY_BUFFER_STATE b , yyscan_t yyscanner );
+void hsql__flush_buffer ( YY_BUFFER_STATE b , yyscan_t yyscanner );
+void hsql_push_buffer_state ( YY_BUFFER_STATE new_buffer , yyscan_t yyscanner );
+void hsql_pop_buffer_state ( yyscan_t yyscanner );
 
-static void hsql_ensure_buffer_stack (yyscan_t yyscanner );
-static void hsql__load_buffer_state (yyscan_t yyscanner );
-static void hsql__init_buffer (YY_BUFFER_STATE b,FILE *file ,yyscan_t yyscanner );
-
+static void hsql_ensure_buffer_stack ( yyscan_t yyscanner );
+static void hsql__load_buffer_state ( yyscan_t yyscanner );
+static void hsql__init_buffer ( YY_BUFFER_STATE b, FILE *file , yyscan_t yyscanner );
 #define YY_FLUSH_BUFFER hsql__flush_buffer(YY_CURRENT_BUFFER ,yyscanner)
 
-YY_BUFFER_STATE hsql__scan_buffer (char *base,yy_size_t size ,yyscan_t yyscanner );
-YY_BUFFER_STATE hsql__scan_string (yyconst char *yy_str ,yyscan_t yyscanner );
-YY_BUFFER_STATE hsql__scan_bytes (yyconst char *bytes,int len ,yyscan_t yyscanner );
+YY_BUFFER_STATE hsql__scan_buffer ( char *base, yy_size_t size , yyscan_t yyscanner );
+YY_BUFFER_STATE hsql__scan_string ( const char *yy_str , yyscan_t yyscanner );
+YY_BUFFER_STATE hsql__scan_bytes ( const char *bytes, int len , yyscan_t yyscanner );
 
-void *hsql_alloc (yy_size_t ,yyscan_t yyscanner );
-void *hsql_realloc (void *,yy_size_t ,yyscan_t yyscanner );
-void hsql_free (void * ,yyscan_t yyscanner );
+void *hsql_alloc ( yy_size_t , yyscan_t yyscanner );
+void *hsql_realloc ( void *, yy_size_t , yyscan_t yyscanner );
+void hsql_free ( void * , yyscan_t yyscanner );
 
 #define yy_new_buffer hsql__create_buffer
-
 #define yy_set_interactive(is_interactive) \
 	{ \
 	if ( ! YY_CURRENT_BUFFER ){ \
@@ -308,7 +376,6 @@ void hsql_free (void * ,yyscan_t yyscanner );
 	} \
 	YY_CURRENT_BUFFER_LVALUE->yy_is_interactive = is_interactive; \
 	}
-
 #define yy_set_bol(at_bol) \
 	{ \
 	if ( ! YY_CURRENT_BUFFER ){\
@@ -318,24 +385,22 @@ void hsql_free (void * ,yyscan_t yyscanner );
 	} \
 	YY_CURRENT_BUFFER_LVALUE->yy_at_bol = at_bol; \
 	}
-
 #define YY_AT_BOL() (YY_CURRENT_BUFFER_LVALUE->yy_at_bol)
 
 /* Begin user sect3 */
 
 #define hsql_wrap(yyscanner) (/*CONSTCOND*/1)
 #define YY_SKIP_YYWRAP
-
-typedef unsigned char YY_CHAR;
+typedef flex_uint8_t YY_CHAR;
 
 typedef int yy_state_type;
 
 #define yytext_ptr yytext_r
 
-static yy_state_type yy_get_previous_state (yyscan_t yyscanner );
-static yy_state_type yy_try_NUL_trans (yy_state_type current_state  ,yyscan_t yyscanner);
-static int yy_get_next_buffer (yyscan_t yyscanner );
-static void yynoreturn yy_fatal_error (yyconst char* msg ,yyscan_t yyscanner );
+static yy_state_type yy_get_previous_state ( yyscan_t yyscanner );
+static yy_state_type yy_try_NUL_trans ( yy_state_type current_state  , yyscan_t yyscanner);
+static int yy_get_next_buffer ( yyscan_t yyscanner );
+static void yynoreturn yy_fatal_error ( const char* msg , yyscan_t yyscanner );
 
 /* Done after the current pattern has been matched and before the
  * corresponding action - sets up yytext.
@@ -346,7 +411,6 @@ static void yynoreturn yy_fatal_error (yyconst char* msg ,yyscan_t yyscanner );
 	yyg->yy_hold_char = *yy_cp; \
 	*yy_cp = '\0'; \
 	yyg->yy_c_buf_p = yy_cp;
-
 #define YY_NUM_RULES 133
 #define YY_END_OF_BUFFER 134
 /* This struct is not used in this scanner,
@@ -356,7 +420,7 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_accept[922] =
+static const flex_int16_t yy_accept[922] =
     {   0,
       130,  130,    2,    2,  134,  132,    4,    4,  132,  130,
       125,  132,  125,  125,  128,  125,  125,  130,  130,  130,
@@ -462,7 +526,7 @@ static yyconst flex_int16_t yy_accept[922] =
         0
     } ;
 
-static yyconst YY_CHAR yy_ec[256] =
+static const YY_CHAR yy_ec[256] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    2,    3,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -494,7 +558,7 @@ static yyconst YY_CHAR yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
-static yyconst YY_CHAR yy_meta[66] =
+static const YY_CHAR yy_meta[66] =
     {   0,
         1,    1,    2,    3,    4,    1,    1,    1,    1,    4,
         1,    1,    1,    4,    4,    4,    4,    4,    4,    4,
@@ -505,7 +569,7 @@ static yyconst YY_CHAR yy_meta[66] =
         4,    4,    4,    4,    4
     } ;
 
-static yyconst flex_uint16_t yy_base[929] =
+static const flex_int16_t yy_base[929] =
     {   0,
         0,    0,   65,    0,  361, 4790,  129,  131,    0,    0,
      4790,  353,  349,  346,  126,  125,  342,  122,  122,  130,
@@ -611,7 +675,7 @@ static yyconst flex_uint16_t yy_base[929] =
      4790, 4765,  139, 4769, 4773, 4777, 4781, 4785
     } ;
 
-static yyconst flex_int16_t yy_def[929] =
+static const flex_int16_t yy_def[929] =
     {   0,
       921,    1,  921,    3,  921,  921,  921,  921,  922,  923,
       921,  924,  921,  921,  923,  921,  921,  923,  923,  923,
@@ -717,7 +781,7 @@ static yyconst flex_int16_t yy_def[929] =
         0,  921,  921,  921,  921,  921,  921,  921
     } ;
 
-static yyconst flex_uint16_t yy_nxt[4856] =
+static const flex_int16_t yy_nxt[4856] =
     {   0,
         6,    7,    8,    9,   10,   11,   12,   13,   14,   15,
        16,   11,   17,   18,   19,   20,   21,   22,   23,   24,
@@ -1255,7 +1319,7 @@ static yyconst flex_uint16_t yy_nxt[4856] =
       921,  921,  921,  921,  921
     } ;
 
-static yyconst flex_int16_t yy_chk[4856] =
+static const flex_int16_t yy_chk[4856] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -1817,6 +1881,7 @@ static yyconst flex_int16_t yy_chk[4856] =
 
 #define TOKEN(name) { return SQL_##name; }
 
+#line 1884 "flex_lexer.cpp"
 /***************************
  ** Section 2: Rules
  ***************************/
@@ -1829,7 +1894,7 @@ static yyconst flex_int16_t yy_chk[4856] =
 /***************************
  ** Section 3: Rules
  ***************************/
-#line 1833 "flex_lexer.cpp"
+#line 1897 "flex_lexer.cpp"
 
 #define INITIAL 0
 #define COMMENT 1
@@ -1884,7 +1949,7 @@ struct yyguts_t
 
     }; /* end struct yyguts_t */
 
-static int yy_init_globals (yyscan_t yyscanner );
+static int yy_init_globals ( yyscan_t yyscanner );
 
     /* This must go here because YYSTYPE and YYLTYPE are included
      * from bison output in section 1.*/
@@ -1894,48 +1959,48 @@ static int yy_init_globals (yyscan_t yyscanner );
     
 int hsql_lex_init (yyscan_t* scanner);
 
-int hsql_lex_init_extra (YY_EXTRA_TYPE user_defined,yyscan_t* scanner);
+int hsql_lex_init_extra ( YY_EXTRA_TYPE user_defined, yyscan_t* scanner);
 
 /* Accessor methods to globals.
    These are made visible to non-reentrant scanners for convenience. */
 
-int hsql_lex_destroy (yyscan_t yyscanner );
+int hsql_lex_destroy ( yyscan_t yyscanner );
 
-int hsql_get_debug (yyscan_t yyscanner );
+int hsql_get_debug ( yyscan_t yyscanner );
 
-void hsql_set_debug (int debug_flag ,yyscan_t yyscanner );
+void hsql_set_debug ( int debug_flag , yyscan_t yyscanner );
 
-YY_EXTRA_TYPE hsql_get_extra (yyscan_t yyscanner );
+YY_EXTRA_TYPE hsql_get_extra ( yyscan_t yyscanner );
 
-void hsql_set_extra (YY_EXTRA_TYPE user_defined ,yyscan_t yyscanner );
+void hsql_set_extra ( YY_EXTRA_TYPE user_defined , yyscan_t yyscanner );
 
-FILE *hsql_get_in (yyscan_t yyscanner );
+FILE *hsql_get_in ( yyscan_t yyscanner );
 
-void hsql_set_in  (FILE * _in_str ,yyscan_t yyscanner );
+void hsql_set_in  ( FILE * _in_str , yyscan_t yyscanner );
 
-FILE *hsql_get_out (yyscan_t yyscanner );
+FILE *hsql_get_out ( yyscan_t yyscanner );
 
-void hsql_set_out  (FILE * _out_str ,yyscan_t yyscanner );
+void hsql_set_out  ( FILE * _out_str , yyscan_t yyscanner );
 
-			int hsql_get_leng (yyscan_t yyscanner );
+			int hsql_get_leng ( yyscan_t yyscanner );
 
-char *hsql_get_text (yyscan_t yyscanner );
+char *hsql_get_text ( yyscan_t yyscanner );
 
-int hsql_get_lineno (yyscan_t yyscanner );
+int hsql_get_lineno ( yyscan_t yyscanner );
 
-void hsql_set_lineno (int _line_number ,yyscan_t yyscanner );
+void hsql_set_lineno ( int _line_number , yyscan_t yyscanner );
 
-int hsql_get_column  (yyscan_t yyscanner );
+int hsql_get_column  ( yyscan_t yyscanner );
 
-void hsql_set_column (int _column_no ,yyscan_t yyscanner );
+void hsql_set_column ( int _column_no , yyscan_t yyscanner );
 
-YYSTYPE * hsql_get_lval (yyscan_t yyscanner );
+YYSTYPE * hsql_get_lval ( yyscan_t yyscanner );
 
-void hsql_set_lval (YYSTYPE * yylval_param ,yyscan_t yyscanner );
+void hsql_set_lval ( YYSTYPE * yylval_param , yyscan_t yyscanner );
 
-       YYLTYPE *hsql_get_lloc (yyscan_t yyscanner );
+       YYLTYPE *hsql_get_lloc ( yyscan_t yyscanner );
     
-        void hsql_set_lloc (YYLTYPE * yylloc_param ,yyscan_t yyscanner );
+        void hsql_set_lloc ( YYLTYPE * yylloc_param , yyscan_t yyscanner );
     
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
@@ -1943,9 +2008,9 @@ void hsql_set_lval (YYSTYPE * yylval_param ,yyscan_t yyscanner );
 
 #ifndef YY_SKIP_YYWRAP
 #ifdef __cplusplus
-extern "C" int hsql_wrap (yyscan_t yyscanner );
+extern "C" int hsql_wrap ( yyscan_t yyscanner );
 #else
-extern int hsql_wrap (yyscan_t yyscanner );
+extern int hsql_wrap ( yyscan_t yyscanner );
 #endif
 #endif
 
@@ -1954,19 +2019,18 @@ extern int hsql_wrap (yyscan_t yyscanner );
 #endif
 
 #ifndef yytext_ptr
-static void yy_flex_strncpy (char *,yyconst char *,int ,yyscan_t yyscanner);
+static void yy_flex_strncpy ( char *, const char *, int , yyscan_t yyscanner);
 #endif
 
 #ifdef YY_NEED_STRLEN
-static int yy_flex_strlen (yyconst char * ,yyscan_t yyscanner);
+static int yy_flex_strlen ( const char * , yyscan_t yyscanner);
 #endif
 
 #ifndef YY_NO_INPUT
-
 #ifdef __cplusplus
-static int yyinput (yyscan_t yyscanner );
+static int yyinput ( yyscan_t yyscanner );
 #else
-static int input (yyscan_t yyscanner );
+static int input ( yyscan_t yyscanner );
 #endif
 
 #endif
@@ -1997,7 +2061,7 @@ static int input (yyscan_t yyscanner );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		size_t n; \
+		int n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( yyin )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -2010,7 +2074,7 @@ static int input (yyscan_t yyscanner );
 	else \
 		{ \
 		errno=0; \
-		while ( (result = (int) fread(buf, 1, max_size, yyin))==0 && ferror(yyin)) \
+		while ( (result = (int) fread(buf, 1, (yy_size_t) max_size, yyin)) == 0 && ferror(yyin)) \
 			{ \
 			if( errno != EINTR) \
 				{ \
@@ -2052,7 +2116,7 @@ static int input (yyscan_t yyscanner );
 #define YY_DECL_IS_OURS 1
 
 extern int hsql_lex \
-               (YYSTYPE * yylval_param,YYLTYPE * yylloc_param ,yyscan_t yyscanner);
+               (YYSTYPE * yylval_param, YYLTYPE * yylloc_param , yyscan_t yyscanner);
 
 #define YY_DECL int hsql_lex \
                (YYSTYPE * yylval_param, YYLTYPE * yylloc_param , yyscan_t yyscanner)
@@ -2116,7 +2180,7 @@ YY_DECL
 #line 51 "flex_lexer.l"
 
 
-#line 2120 "flex_lexer.cpp"
+#line 2183 "flex_lexer.cpp"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -2144,9 +2208,9 @@ yy_match:
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
 				if ( yy_current_state >= 922 )
-					yy_c = yy_meta[(unsigned int) yy_c];
+					yy_c = yy_meta[yy_c];
 				}
-			yy_current_state = yy_nxt[yy_base[yy_current_state] + (flex_int16_t) yy_c];
+			yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
 			++yy_cp;
 			}
 		while ( yy_current_state != 921 );
@@ -2820,7 +2884,7 @@ YY_RULE_SETUP
 {
 	// Crop the leading and trailing quote char
 	yylval->sval = hsql::substr(yytext, 1, strlen(yytext)-1);
-	return SQL_IDENTIFIER;
+	return SQL_STRING;
 }
 	YY_BREAK
 case 130:
@@ -2850,7 +2914,7 @@ YY_RULE_SETUP
 #line 214 "flex_lexer.l"
 ECHO;
 	YY_BREAK
-#line 2854 "flex_lexer.cpp"
+#line 2917 "flex_lexer.cpp"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(COMMENT):
 	yyterminate();
@@ -2998,7 +3062,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
 	char *source = yyg->yytext_ptr;
-	yy_size_t number_to_move, i;
+	int number_to_move, i;
 	int ret_val;
 
 	if ( yyg->yy_c_buf_p > &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1] )
@@ -3027,7 +3091,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 	/* Try to read more data. */
 
 	/* First move last chars to start of buffer. */
-	number_to_move = (yy_size_t) (yyg->yy_c_buf_p - yyg->yytext_ptr) - 1;
+	number_to_move = (int) (yyg->yy_c_buf_p - yyg->yytext_ptr - 1);
 
 	for ( i = 0; i < number_to_move; ++i )
 		*(dest++) = *(source++);
@@ -3063,7 +3127,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 
 				b->yy_ch_buf = (char *)
 					/* Include room in for 2 EOB chars. */
-					hsql_realloc((void *) b->yy_ch_buf,b->yy_buf_size + 2 ,yyscanner );
+					hsql_realloc((void *) b->yy_ch_buf,(yy_size_t) (b->yy_buf_size + 2) ,yyscanner );
 				}
 			else
 				/* Can't grow it, we don't own it. */
@@ -3109,10 +3173,10 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 	else
 		ret_val = EOB_ACT_CONTINUE_SCAN;
 
-	if ((int) (yyg->yy_n_chars + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
+	if ((yyg->yy_n_chars + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
 		/* Extend the array by 50%, plus the number we really need. */
 		int new_size = yyg->yy_n_chars + number_to_move + (yyg->yy_n_chars >> 1);
-		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) hsql_realloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size ,yyscanner );
+		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) hsql_realloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,(yy_size_t) new_size ,yyscanner );
 		if ( ! YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
 			YY_FATAL_ERROR( "out of dynamic memory in yy_get_next_buffer()" );
 	}
@@ -3148,9 +3212,9 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
 			if ( yy_current_state >= 922 )
-				yy_c = yy_meta[(unsigned int) yy_c];
+				yy_c = yy_meta[yy_c];
 			}
-		yy_current_state = yy_nxt[yy_base[yy_current_state] + (flex_int16_t) yy_c];
+		yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
 		}
 
 	return yy_current_state;
@@ -3177,9 +3241,9 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
 		if ( yy_current_state >= 922 )
-			yy_c = yy_meta[(unsigned int) yy_c];
+			yy_c = yy_meta[yy_c];
 		}
-	yy_current_state = yy_nxt[yy_base[yy_current_state] + (flex_int16_t) yy_c];
+	yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
 	yy_is_jam = (yy_current_state == 921);
 
 	(void)yyg;
@@ -3215,7 +3279,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 
 		else
 			{ /* need more input */
-			int offset = yyg->yy_c_buf_p - yyg->yytext_ptr;
+			int offset = (int) (yyg->yy_c_buf_p - yyg->yytext_ptr);
 			++yyg->yy_c_buf_p;
 
 			switch ( yy_get_next_buffer( yyscanner ) )
@@ -3343,12 +3407,12 @@ static void hsql__load_buffer_state  (yyscan_t yyscanner)
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in hsql__create_buffer()" );
 
-	b->yy_buf_size = (yy_size_t)size;
+	b->yy_buf_size = size;
 
 	/* yy_ch_buf has to be 2 characters longer than the size given because
 	 * we need to put in 2 end-of-buffer characters.
 	 */
-	b->yy_ch_buf = (char *) hsql_alloc(b->yy_buf_size + 2 ,yyscanner );
+	b->yy_ch_buf = (char *) hsql_alloc((yy_size_t) (b->yy_buf_size + 2) ,yyscanner );
 	if ( ! b->yy_ch_buf )
 		YY_FATAL_ERROR( "out of dynamic memory in hsql__create_buffer()" );
 
@@ -3495,7 +3559,7 @@ void hsql_pop_buffer_state (yyscan_t yyscanner)
  */
 static void hsql_ensure_buffer_stack (yyscan_t yyscanner)
 {
-	int num_to_alloc;
+	yy_size_t num_to_alloc;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
 	if (!yyg->yy_buffer_stack) {
@@ -3510,9 +3574,9 @@ static void hsql_ensure_buffer_stack (yyscan_t yyscanner)
 								, yyscanner);
 		if ( ! yyg->yy_buffer_stack )
 			YY_FATAL_ERROR( "out of dynamic memory in hsql_ensure_buffer_stack()" );
-								  
+
 		memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));
-				
+
 		yyg->yy_buffer_stack_max = num_to_alloc;
 		yyg->yy_buffer_stack_top = 0;
 		return;
@@ -3541,7 +3605,7 @@ static void hsql_ensure_buffer_stack (yyscan_t yyscanner)
  * @param base the character buffer
  * @param size the size in bytes of the character buffer
  * @param yyscanner The scanner object.
- * @return the newly allocated buffer state object. 
+ * @return the newly allocated buffer state object.
  */
 YY_BUFFER_STATE hsql__scan_buffer  (char * base, yy_size_t  size , yyscan_t yyscanner)
 {
@@ -3557,7 +3621,7 @@ YY_BUFFER_STATE hsql__scan_buffer  (char * base, yy_size_t  size , yyscan_t yysc
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in hsql__scan_buffer()" );
 
-	b->yy_buf_size = size - 2;	/* "- 2" to take care of EOB's */
+	b->yy_buf_size = (int) (size - 2);	/* "- 2" to take care of EOB's */
 	b->yy_buf_pos = b->yy_ch_buf = base;
 	b->yy_is_our_buffer = 0;
 	b->yy_input_file = NULL;
@@ -3580,7 +3644,7 @@ YY_BUFFER_STATE hsql__scan_buffer  (char * base, yy_size_t  size , yyscan_t yysc
  * @note If you want to scan bytes that may contain NUL values, then use
  *       hsql__scan_bytes() instead.
  */
-YY_BUFFER_STATE hsql__scan_string (yyconst char * yystr , yyscan_t yyscanner)
+YY_BUFFER_STATE hsql__scan_string (const char * yystr , yyscan_t yyscanner)
 {
     
 	return hsql__scan_bytes(yystr,(int) strlen(yystr) ,yyscanner);
@@ -3593,15 +3657,15 @@ YY_BUFFER_STATE hsql__scan_string (yyconst char * yystr , yyscan_t yyscanner)
  * @param yyscanner The scanner object.
  * @return the newly allocated buffer state object.
  */
-YY_BUFFER_STATE hsql__scan_bytes  (yyconst char * yybytes, int  _yybytes_len , yyscan_t yyscanner)
+YY_BUFFER_STATE hsql__scan_bytes  (const char * yybytes, int  _yybytes_len , yyscan_t yyscanner)
 {
 	YY_BUFFER_STATE b;
 	char *buf;
 	yy_size_t n;
-	yy_size_t i;
+	int i;
     
 	/* Get memory for full buffer, including space for trailing EOB's. */
-	n = (yy_size_t) _yybytes_len + 2;
+	n = (yy_size_t) (_yybytes_len + 2);
 	buf = (char *) hsql_alloc(n ,yyscanner );
 	if ( ! buf )
 		YY_FATAL_ERROR( "out of dynamic memory in hsql__scan_bytes()" );
@@ -3627,7 +3691,7 @@ YY_BUFFER_STATE hsql__scan_bytes  (yyconst char * yybytes, int  _yybytes_len , y
 #define YY_EXIT_FAILURE 2
 #endif
 
-static void yynoreturn yy_fatal_error (yyconst char* msg , yyscan_t yyscanner)
+static void yynoreturn yy_fatal_error (const char* msg , yyscan_t yyscanner)
 {
 	struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	(void)yyg;
@@ -3669,7 +3733,7 @@ YY_EXTRA_TYPE hsql_get_extra  (yyscan_t yyscanner)
 int hsql_get_lineno  (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-    
+
         if (! YY_CURRENT_BUFFER)
             return 0;
     
@@ -3682,7 +3746,7 @@ int hsql_get_lineno  (yyscan_t yyscanner)
 int hsql_get_column  (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-    
+
         if (! YY_CURRENT_BUFFER)
             return 0;
     
@@ -3828,9 +3892,7 @@ void hsql_set_lloc (YYLTYPE *  yylloc_param , yyscan_t yyscanner)
  * the ONLY reentrant function that doesn't take the scanner as the last argument.
  * That's why we explicitly handle the declaration, instead of using our macros.
  */
-
 int hsql_lex_init(yyscan_t* ptr_yy_globals)
-
 {
     if (ptr_yy_globals == NULL){
         errno = EINVAL;
@@ -3857,9 +3919,7 @@ int hsql_lex_init(yyscan_t* ptr_yy_globals)
  * The user defined value in the first argument will be available to hsql_alloc in
  * the yyextra field.
  */
-
 int hsql_lex_init_extra(YY_EXTRA_TYPE yy_user_defined,yyscan_t* ptr_yy_globals )
-
 {
     struct yyguts_t dummy_yyguts;
 
@@ -3869,20 +3929,20 @@ int hsql_lex_init_extra(YY_EXTRA_TYPE yy_user_defined,yyscan_t* ptr_yy_globals )
         errno = EINVAL;
         return 1;
     }
-	
+
     *ptr_yy_globals = (yyscan_t) hsql_alloc ( sizeof( struct yyguts_t ), &dummy_yyguts );
-	
+
     if (*ptr_yy_globals == NULL){
         errno = ENOMEM;
         return 1;
     }
-    
+
     /* By setting to 0xAA, we expose bugs in
     yy_init_globals. Leave at 0x00 for releases. */
     memset(*ptr_yy_globals,0x00,sizeof(struct yyguts_t));
-    
+
     hsql_set_extra (yy_user_defined, *ptr_yy_globals);
-    
+
     return yy_init_globals ( *ptr_yy_globals );
 }
 
@@ -3954,7 +4014,7 @@ int hsql_lex_destroy  (yyscan_t yyscanner)
  */
 
 #ifndef yytext_ptr
-static void yy_flex_strncpy (char* s1, yyconst char * s2, int n , yyscan_t yyscanner)
+static void yy_flex_strncpy (char* s1, const char * s2, int n , yyscan_t yyscanner)
 {
 	struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	(void)yyg;
@@ -3966,7 +4026,7 @@ static void yy_flex_strncpy (char* s1, yyconst char * s2, int n , yyscan_t yysca
 #endif
 
 #ifdef YY_NEED_STRLEN
-static int yy_flex_strlen (yyconst char * s , yyscan_t yyscanner)
+static int yy_flex_strlen (const char * s , yyscan_t yyscanner)
 {
 	int n;
 	for ( n = 0; s[n]; ++n )
@@ -4008,7 +4068,6 @@ void hsql_free (void * ptr , yyscan_t yyscanner)
 #define YYTABLES_NAME "yytables"
 
 #line 214 "flex_lexer.l"
-
 
 /***************************
  ** Section 3: User code

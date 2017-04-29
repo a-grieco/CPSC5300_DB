@@ -57,6 +57,19 @@ std::string ParseTreeToString::operator_expression(const hsql::Expr *expr) {
         case hsql::Expr::OR:
             ret += "OR";
             break;
+        case hsql::Expr::NONE:break;
+        case hsql::Expr::BETWEEN:break;
+        case hsql::Expr::CASE:break;
+        case hsql::Expr::NOT_EQUALS:break;
+        case hsql::Expr::LESS_EQ:break;
+        case hsql::Expr::GREATER_EQ:break;
+        case hsql::Expr::LIKE:break;
+        case hsql::Expr::NOT_LIKE:break;
+        case hsql::Expr::IN:break;
+        case hsql::Expr::NOT:break;
+        case hsql::Expr::UMINUS:break;
+        case hsql::Expr::ISNULL:break;
+        case hsql::Expr::EXISTS:break;
     }
     if (expr->expr2 != NULL)
         ret += " " + expression(expr->expr2);
@@ -72,8 +85,10 @@ std::string ParseTreeToString::expression(const hsql::Expr *expr) {
         case hsql::kExprColumnRef:
             if (expr->table != NULL)
                 ret += std::string(expr->table) + ".";
-        case hsql::kExprLiteralString:
             ret += expr->name;
+            break;
+        case hsql::kExprLiteralString:
+            ret += std::string("\"") + expr->name + "\"";
             break;
         case hsql::kExprLiteralFloat:
             ret += std::to_string(expr->fval);
@@ -99,6 +114,8 @@ std::string ParseTreeToString::expression(const hsql::Expr *expr) {
 std::string ParseTreeToString::table_ref(const hsql::TableRef *table) {
     std::string ret;
     switch (table->type) {
+        case hsql::kTableSelect:
+            break;
         case hsql::kTableName:
             ret += table->name;
             if (table->alias != NULL)
@@ -176,7 +193,32 @@ std::string ParseTreeToString::select(const hsql::SelectStatement *stmt) {
 }
 
 std::string ParseTreeToString::insert(const hsql::InsertStatement *stmt) {
-    return "INSERT ...";
+    std::string ret("INSERT INTO ");
+    ret += stmt->tableName;
+    if (stmt->type == hsql::InsertStatement::kInsertSelect)
+        return ret + "SELECT ...";
+
+    bool doComma = false;
+    if (stmt->columns != NULL) {
+        ret += " (";
+        for (auto const &column: *stmt->columns) {
+            if (doComma)
+                ret += ", ";
+            ret += column;
+            doComma = true;
+        }
+        ret += ")";
+    }
+    ret += " VALUES (";
+    doComma = false;
+    for (hsql::Expr *expr : *stmt->values) {
+        if (doComma)
+            ret += ", ";
+        ret += expression(expr);
+        doComma = true;
+    }
+    ret += ")";
+    return ret;
 }
 
 std::string ParseTreeToString::create(const hsql::CreateStatement *stmt) {
@@ -247,12 +289,24 @@ std::string ParseTreeToString::show(const hsql::ShowStatement *stmt) {
     return ret;
 }
 
+std::string ParseTreeToString::del(const hsql::DeleteStatement *stmt) {
+    std::string ret("DELETE FROM ");
+    ret += stmt->tableName;
+    if (stmt->expr != NULL) {
+        ret += " WHERE ";
+        ret += expression(stmt->expr);
+    }
+    return ret;
+}
+
 std::string ParseTreeToString::statement(const hsql::SQLStatement *stmt) {
     switch (stmt->type()) {
         case hsql::kStmtSelect:
             return select((const hsql::SelectStatement *) stmt);
         case hsql::kStmtInsert:
             return insert((const hsql::InsertStatement *) stmt);
+        case hsql::kStmtDelete:
+            return del((const hsql::DeleteStatement *) stmt);
         case hsql::kStmtCreate:
             return create((const hsql::CreateStatement *) stmt);
         case hsql::kStmtDrop:
@@ -263,7 +317,6 @@ std::string ParseTreeToString::statement(const hsql::SQLStatement *stmt) {
         case hsql::kStmtError:
         case hsql::kStmtImport:
         case hsql::kStmtUpdate:
-        case hsql::kStmtDelete:
         case hsql::kStmtPrepare:
         case hsql::kStmtExecute:
         case hsql::kStmtExport:

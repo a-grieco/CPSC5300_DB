@@ -2,9 +2,9 @@
 #define hsql_HEADER_H 1
 #define hsql_IN_HEADER 1
 
-#line 6 "flex_lexer.h"
+#line 5 "flex_lexer.h"
 
-#line 8 "flex_lexer.h"
+#line 7 "flex_lexer.h"
 
 #define  YY_INT_ALIGNED short int
 
@@ -13,10 +13,88 @@
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 6
-#define YY_FLEX_SUBMINOR_VERSION 1
+#define YY_FLEX_SUBMINOR_VERSION 3
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
+
+    #define yy_create_buffer hsql__create_buffer
+
+    #define yy_delete_buffer hsql__delete_buffer
+
+    #define yy_scan_buffer hsql__scan_buffer
+
+    #define yy_scan_string hsql__scan_string
+
+    #define yy_scan_bytes hsql__scan_bytes
+
+    #define yy_init_buffer hsql__init_buffer
+
+    #define yy_flush_buffer hsql__flush_buffer
+
+    #define yy_load_buffer_state hsql__load_buffer_state
+
+    #define yy_switch_to_buffer hsql__switch_to_buffer
+
+    #define yypush_buffer_state hsql_push_buffer_state
+
+    #define yypop_buffer_state hsql_pop_buffer_state
+
+    #define yyensure_buffer_stack hsql_ensure_buffer_stack
+
+    #define yylex hsql_lex
+
+    #define yyrestart hsql_restart
+
+    #define yylex_init hsql_lex_init
+
+    #define yylex_init_extra hsql_lex_init_extra
+
+    #define yylex_destroy hsql_lex_destroy
+
+    #define yyget_debug hsql_get_debug
+
+    #define yyset_debug hsql_set_debug
+
+    #define yyget_extra hsql_get_extra
+
+    #define yyset_extra hsql_set_extra
+
+    #define yyget_in hsql_get_in
+
+    #define yyset_in hsql_set_in
+
+    #define yyget_out hsql_get_out
+
+    #define yyset_out hsql_set_out
+
+    #define yyget_leng hsql_get_leng
+
+    #define yyget_text hsql_get_text
+
+    #define yyget_lineno hsql_get_lineno
+
+    #define yyset_lineno hsql_set_lineno
+
+        #define yyget_column hsql_get_column
+
+        #define yyset_column hsql_set_column
+
+    #define yywrap hsql_wrap
+
+    #define yyget_lval hsql_get_lval
+
+    #define yyset_lval hsql_set_lval
+
+    #define yyget_lloc hsql_get_lloc
+
+    #define yyset_lloc hsql_set_lloc
+
+    #define yyalloc hsql_alloc
+
+    #define yyrealloc hsql_realloc
+
+    #define yyfree hsql_free
 
 /* First, we deal with  platform-specific or compiler-specific issues. */
 
@@ -181,7 +259,7 @@ struct yy_buffer_state
 
     int yy_bs_lineno; /**< The line count. */
     int yy_bs_column; /**< The column count. */
-    
+
 	/* Whether to try to fill the input buffer when we reach the
 	 * end of it.
 	 */
@@ -192,21 +270,21 @@ struct yy_buffer_state
 	};
 #endif /* !YY_STRUCT_YY_BUFFER_STATE */
 
-void hsql_restart (FILE *input_file ,yyscan_t yyscanner );
-void hsql__switch_to_buffer (YY_BUFFER_STATE new_buffer ,yyscan_t yyscanner );
-YY_BUFFER_STATE hsql__create_buffer (FILE *file,int size ,yyscan_t yyscanner );
-void hsql__delete_buffer (YY_BUFFER_STATE b ,yyscan_t yyscanner );
-void hsql__flush_buffer (YY_BUFFER_STATE b ,yyscan_t yyscanner );
-void hsql_push_buffer_state (YY_BUFFER_STATE new_buffer ,yyscan_t yyscanner );
-void hsql_pop_buffer_state (yyscan_t yyscanner );
+void hsql_restart ( FILE *input_file , yyscan_t yyscanner );
+void hsql__switch_to_buffer ( YY_BUFFER_STATE new_buffer , yyscan_t yyscanner );
+YY_BUFFER_STATE hsql__create_buffer ( FILE *file, int size , yyscan_t yyscanner );
+void hsql__delete_buffer ( YY_BUFFER_STATE b , yyscan_t yyscanner );
+void hsql__flush_buffer ( YY_BUFFER_STATE b , yyscan_t yyscanner );
+void hsql_push_buffer_state ( YY_BUFFER_STATE new_buffer , yyscan_t yyscanner );
+void hsql_pop_buffer_state ( yyscan_t yyscanner );
 
-YY_BUFFER_STATE hsql__scan_buffer (char *base,yy_size_t size ,yyscan_t yyscanner );
-YY_BUFFER_STATE hsql__scan_string (yyconst char *yy_str ,yyscan_t yyscanner );
-YY_BUFFER_STATE hsql__scan_bytes (yyconst char *bytes,int len ,yyscan_t yyscanner );
+YY_BUFFER_STATE hsql__scan_buffer ( char *base, yy_size_t size , yyscan_t yyscanner );
+YY_BUFFER_STATE hsql__scan_string ( const char *yy_str , yyscan_t yyscanner );
+YY_BUFFER_STATE hsql__scan_bytes ( const char *bytes, int len , yyscan_t yyscanner );
 
-void *hsql_alloc (yy_size_t ,yyscan_t yyscanner );
-void *hsql_realloc (void *,yy_size_t ,yyscan_t yyscanner );
-void hsql_free (void * ,yyscan_t yyscanner );
+void *hsql_alloc ( yy_size_t , yyscan_t yyscanner );
+void *hsql_realloc ( void *, yy_size_t , yyscan_t yyscanner );
+void hsql_free ( void * , yyscan_t yyscanner );
 
 /* Begin user sect3 */
 
@@ -235,48 +313,48 @@ void hsql_free (void * ,yyscan_t yyscanner );
 
 int hsql_lex_init (yyscan_t* scanner);
 
-int hsql_lex_init_extra (YY_EXTRA_TYPE user_defined,yyscan_t* scanner);
+int hsql_lex_init_extra ( YY_EXTRA_TYPE user_defined, yyscan_t* scanner);
 
 /* Accessor methods to globals.
    These are made visible to non-reentrant scanners for convenience. */
 
-int hsql_lex_destroy (yyscan_t yyscanner );
+int hsql_lex_destroy ( yyscan_t yyscanner );
 
-int hsql_get_debug (yyscan_t yyscanner );
+int hsql_get_debug ( yyscan_t yyscanner );
 
-void hsql_set_debug (int debug_flag ,yyscan_t yyscanner );
+void hsql_set_debug ( int debug_flag , yyscan_t yyscanner );
 
-YY_EXTRA_TYPE hsql_get_extra (yyscan_t yyscanner );
+YY_EXTRA_TYPE hsql_get_extra ( yyscan_t yyscanner );
 
-void hsql_set_extra (YY_EXTRA_TYPE user_defined ,yyscan_t yyscanner );
+void hsql_set_extra ( YY_EXTRA_TYPE user_defined , yyscan_t yyscanner );
 
-FILE *hsql_get_in (yyscan_t yyscanner );
+FILE *hsql_get_in ( yyscan_t yyscanner );
 
-void hsql_set_in  (FILE * _in_str ,yyscan_t yyscanner );
+void hsql_set_in  ( FILE * _in_str , yyscan_t yyscanner );
 
-FILE *hsql_get_out (yyscan_t yyscanner );
+FILE *hsql_get_out ( yyscan_t yyscanner );
 
-void hsql_set_out  (FILE * _out_str ,yyscan_t yyscanner );
+void hsql_set_out  ( FILE * _out_str , yyscan_t yyscanner );
 
-			int hsql_get_leng (yyscan_t yyscanner );
+			int hsql_get_leng ( yyscan_t yyscanner );
 
-char *hsql_get_text (yyscan_t yyscanner );
+char *hsql_get_text ( yyscan_t yyscanner );
 
-int hsql_get_lineno (yyscan_t yyscanner );
+int hsql_get_lineno ( yyscan_t yyscanner );
 
-void hsql_set_lineno (int _line_number ,yyscan_t yyscanner );
+void hsql_set_lineno ( int _line_number , yyscan_t yyscanner );
 
-int hsql_get_column  (yyscan_t yyscanner );
+int hsql_get_column  ( yyscan_t yyscanner );
 
-void hsql_set_column (int _column_no ,yyscan_t yyscanner );
+void hsql_set_column ( int _column_no , yyscan_t yyscanner );
 
-YYSTYPE * hsql_get_lval (yyscan_t yyscanner );
+YYSTYPE * hsql_get_lval ( yyscan_t yyscanner );
 
-void hsql_set_lval (YYSTYPE * yylval_param ,yyscan_t yyscanner );
+void hsql_set_lval ( YYSTYPE * yylval_param , yyscan_t yyscanner );
 
-       YYLTYPE *hsql_get_lloc (yyscan_t yyscanner );
+       YYLTYPE *hsql_get_lloc ( yyscan_t yyscanner );
     
-        void hsql_set_lloc (YYLTYPE * yylloc_param ,yyscan_t yyscanner );
+        void hsql_set_lloc ( YYLTYPE * yylloc_param , yyscan_t yyscanner );
     
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
@@ -284,18 +362,18 @@ void hsql_set_lval (YYSTYPE * yylval_param ,yyscan_t yyscanner );
 
 #ifndef YY_SKIP_YYWRAP
 #ifdef __cplusplus
-extern "C" int hsql_wrap (yyscan_t yyscanner );
+extern "C" int hsql_wrap ( yyscan_t yyscanner );
 #else
-extern int hsql_wrap (yyscan_t yyscanner );
+extern int hsql_wrap ( yyscan_t yyscanner );
 #endif
 #endif
 
 #ifndef yytext_ptr
-static void yy_flex_strncpy (char *,yyconst char *,int ,yyscan_t yyscanner);
+static void yy_flex_strncpy ( char *, const char *, int , yyscan_t yyscanner);
 #endif
 
 #ifdef YY_NEED_STRLEN
-static int yy_flex_strlen (yyconst char * ,yyscan_t yyscanner);
+static int yy_flex_strlen ( const char * , yyscan_t yyscanner);
 #endif
 
 #ifndef YY_NO_INPUT
@@ -324,7 +402,7 @@ static int yy_flex_strlen (yyconst char * ,yyscan_t yyscanner);
 #define YY_DECL_IS_OURS 1
 
 extern int hsql_lex \
-               (YYSTYPE * yylval_param,YYLTYPE * yylloc_param ,yyscan_t yyscanner);
+               (YYSTYPE * yylval_param, YYLTYPE * yylloc_param , yyscan_t yyscanner);
 
 #define YY_DECL int hsql_lex \
                (YYSTYPE * yylval_param, YYLTYPE * yylloc_param , yyscan_t yyscanner)
@@ -347,6 +425,6 @@ extern int hsql_lex \
 #line 214 "flex_lexer.l"
 
 
-#line 351 "flex_lexer.h"
+#line 428 "flex_lexer.h"
 #undef hsql_IN_HEADER
 #endif /* hsql_HEADER_H */

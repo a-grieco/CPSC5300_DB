@@ -18,6 +18,7 @@ public:
     static std::string column_definition(const hsql::ColumnDefinition *col);
     static std::string select(const hsql::SelectStatement *stmt);
     static std::string insert(const hsql::InsertStatement *stmt);
+    static std::string del(const hsql::DeleteStatement *stmt);
     static std::string create(const hsql::CreateStatement *stmt);
     static std::string drop(const hsql::DropStatement *stmt);
     static std::string show(const hsql::ShowStatement *stmt);

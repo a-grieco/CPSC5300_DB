@@ -59,8 +59,15 @@ protected:
     static QueryResult *show_columns(const hsql::ShowStatement *statement);
     static QueryResult *show_index(const hsql::ShowStatement *statement);
 
+    static QueryResult *insert(const hsql::InsertStatement *statement);
+    static QueryResult *del(const hsql::DeleteStatement *statement);
+    static QueryResult *select(const hsql::SelectStatement *statement);
+
+	static Value get_value(std::vector<struct hsql::Expr*>::value_type expr);
+	static ValueDict* get_where_conjunction(hsql::Expr* const expr);
+	static ValueDict* get_where_conjunction_helper(hsql::Expr*const expr, ValueDict& where);
+	static ColumnNames* get_column_names(std::vector<char*>* strs, const DbRelation& table);
+
     static void
     column_definition(const hsql::ColumnDefinition *col, Identifier &column_name, ColumnAttribute &column_attribute);
-	
-	static void remove_rows(const Identifier name, const Identifier index_name);
 };

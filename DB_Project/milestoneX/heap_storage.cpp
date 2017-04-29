@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 #include <memory.h>
 #include "heap_storage.h"
 
@@ -121,8 +122,6 @@ void SlottedPage::slide(u16 start, u16 end) {
 	temp = new char[bytes];
 	memcpy(temp, from, bytes);
 	memcpy(to, temp, bytes);
-
-	delete[] temp;
 
 	// fix up headers
 	RecordIDs* record_ids = ids();
@@ -339,12 +338,21 @@ Handles* HeapTable::select(const ValueDict* where) {
 		for (auto const& record_id : *record_ids) {
 			Handle handle(block_id, record_id);
 			if (selected(handle, where))
-				handles->push_back(Handle(block_id, record_id));
+				handles->push_back(handle);
 		}
 		delete record_ids;
 		delete block;
 	}
 	delete block_ids;
+	return handles;
+}
+
+// Refine another selection
+Handles* HeapTable::select(Handles *current_selection, const ValueDict* where) {
+	Handles* handles = new Handles();
+	for (auto const& handle : *current_selection)
+		if (selected(handle, where))
+			handles->push_back(handle);
 	return handles;
 }
 
@@ -377,14 +385,18 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names) {
 // Otherwise return the full row dictionary.
 ValueDict* HeapTable::validate(const ValueDict* row) const {
 	ValueDict* full_row = new ValueDict();
+	auto it_attributes = this->column_attributes.begin();
 	for (auto const& column_name : this->column_names) {
 		Value value;
 		ValueDict::const_iterator column = row->find(column_name);
 		if (column == row->end())
 			throw DbRelationError("don't know how to handle NULLs, defaults, etc. yet");
+		else if (column->second.data_type != it_attributes->get_data_type())
+			throw DbRelationError("types don't match");
 		else
 			value = column->second;
 		(*full_row)[column_name] = value;
+		++it_attributes;
 	}
 	return full_row;
 }

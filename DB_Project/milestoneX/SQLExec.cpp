@@ -1,10 +1,10 @@
 
+#include <algorithm>
 #include "SQLExec.h"
-#include "scopeguard.h"
+#include "EvalPlan.h"
 
 Tables* SQLExec::tables = nullptr;
 Indices* SQLExec::indices = nullptr;
-
 
 std::ostream &operator<<(std::ostream &out, const QueryResult &qres) {
 	if (qres.column_names != nullptr) {
@@ -53,13 +53,8 @@ QueryResult::~QueryResult() {
 
 QueryResult *SQLExec::execute(const hsql::SQLStatement *statement) throw(SQLExecError) {
 	// initialize _tables table, if not yet present
-	if (SQLExec::tables == nullptr)
-	{
+	if (SQLExec::tables == nullptr) {
 		SQLExec::tables = new Tables();
-	}
-
-	if (SQLExec::indices == nullptr)
-	{
 		SQLExec::indices = new Indices();
 	}
 
@@ -71,6 +66,12 @@ QueryResult *SQLExec::execute(const hsql::SQLStatement *statement) throw(SQLExec
 			return drop((const hsql::DropStatement *) statement);
 		case hsql::kStmtShow:
 			return show((const hsql::ShowStatement *) statement);
+		case hsql::kStmtInsert:
+			return insert((const hsql::InsertStatement *) statement);
+		case hsql::kStmtDelete:
+			return del((const hsql::DeleteStatement *) statement);
+		case hsql::kStmtSelect:
+			return select((const hsql::SelectStatement *) statement);
 		default:
 			return new QueryResult("not implemented");
 		}
@@ -78,6 +79,166 @@ QueryResult *SQLExec::execute(const hsql::SQLStatement *statement) throw(SQLExec
 	catch (DbRelationError& e) {
 		throw SQLExecError(std::string("DbRelationError: ") + e.what());
 	}
+}
+
+Value SQLExec::get_value(std::vector<hsql::Expr*>::value_type expr)
+{
+	switch (expr->type)
+	{
+	case hsql::kExprLiteralString:
+		return Value(expr->name);
+	case hsql::kExprLiteralInt:
+		return Value((int32_t)expr->ival);
+	default:
+		throw DbRelationError("only accepting string or int value types right now");
+	}
+
+}
+
+ColumnNames* SQLExec::get_column_names(std::vector<char*>* columns, const DbRelation& table)
+{
+	ColumnNames* column_names = new ColumnNames;
+
+	if (columns == NULL)
+	{
+		*column_names = table.get_column_names();
+
+	}
+	else
+	{
+		for (auto const& column : *columns)
+		{
+			column_names->push_back(column);
+		}
+	}
+
+	return column_names;
+}
+
+QueryResult *SQLExec::insert(const hsql::InsertStatement *statement) {
+	DbRelation& table = tables->get_table(statement->tableName);
+
+	std::vector<char*>* columns = statement->columns;
+	ColumnNames* column_names = get_column_names(columns, table);
+	//ColumnNames* column_names = new ColumnNames;
+	Handle handle;
+	int num_indices = 0;
+
+	//if (columns == NULL)
+	//{
+	//	*column_names = table.get_column_names();
+
+	//}
+	//else
+	//{
+	//	for (auto const& column : *columns)
+	//	{
+	//		column_names->push_back(column);
+	//	}
+	//}
+	std::vector<hsql::Expr*>* values = statement->values;
+	if (column_names->size() == values->size())
+	{
+		ValueDict row;
+		for (int i = 0; i < column_names->size(); ++i)
+		{
+			Value value = get_value(statement->values->at(i));
+			row[(*column_names)[i]] = value;
+		}
+
+		handle = table.insert(&row);
+	}
+
+	IndexNames index_names = indices->get_index_names(statement->tableName);
+	for (auto const& index_name : index_names)
+	{
+		DbIndex& index = indices->get_index(statement->tableName, index_name);
+		index.insert(handle);
+		num_indices++;
+	}
+
+	std::string table_name = statement->tableName;
+	std::string message = "successfully inserted 1 row into " +
+		(std::string) statement->tableName + " and " +
+		std::to_string(num_indices) + " indices";
+
+	return new QueryResult(message);
+}
+
+QueryResult *SQLExec::del(const hsql::DeleteStatement *statement) {
+	return new QueryResult("DELETE statement not yet implemented");  // FIXME
+}
+
+ValueDict* SQLExec::get_where_conjunction(hsql::Expr* const expr)
+{
+	ValueDict* where = new ValueDict();
+	return get_where_conjunction_helper(expr, *where);
+}
+
+ValueDict* SQLExec::get_where_conjunction_helper(hsql::Expr* const expr, ValueDict& where)
+{
+	if (expr->type == hsql::kExprOperator)
+	{
+		// if AND, follow left and right branch down parse tree
+		if (expr->opType == hsql::Expr::AND)
+		{
+			get_where_conjunction_helper(expr->expr, where);
+			get_where_conjunction_helper(expr->expr2, where);
+		}
+		// if =, left branch holds identifier, right branch value
+		else if (expr->opType == hsql::Expr::SIMPLE_OP)
+		{
+			Identifier identifier = expr->expr->name;
+			Value value = get_value(expr->expr2);
+			where[identifier] = value;
+		}
+	}
+	return &where;
+}
+
+QueryResult *SQLExec::select(const hsql::SelectStatement *statement) {
+
+	DbRelation& table = tables->get_table(statement->fromTable->name);
+
+	// start base of plan at a TableScan
+	EvalPlan *plan = new EvalPlan(table);
+
+	// enclose that in a Select if we have a where clause
+	if (statement->whereClause != nullptr)
+	{
+		plan = new EvalPlan(get_where_conjunction(statement->whereClause), plan);
+	}
+
+	// now wrap the whole thing in a Project or a ProjectAll
+	std::vector<hsql::Expr*>* select_list = statement->selectList;
+	ColumnNames* column_names = new ColumnNames;
+
+	// if *, Project All
+	if (select_list->at(0)->type == hsql::kExprStar)
+	{
+		*column_names = table.get_column_names();
+		plan = new EvalPlan(EvalPlan::ProjectAll, plan);
+	}
+	// otherwise Project the select list
+	else
+	{
+		
+		for (auto select : *select_list)
+		{
+			column_names->push_back(select->name);
+		}
+		plan = new EvalPlan(column_names, plan);
+	}
+
+	EvalPlan* optimized = plan->optimize();
+	ValueDicts* rows = optimized->evaluate();
+
+	ColumnAttributes* column_attributes = table.get_column_attributes(*column_names);
+	
+	std::string message = "successfully returned " + 
+		std::to_string(rows->size()) + " rows";
+
+	return new QueryResult(column_names, column_attributes, rows,message);  
 }
 
 void SQLExec::column_definition(const hsql::ColumnDefinition *col, Identifier& column_name,
@@ -141,7 +302,7 @@ QueryResult *SQLExec::create_table(const hsql::CreateStatement *statement) {
 				table.create();
 
 		}
-		catch (std::exception& e) {
+		catch (...) {
 			// attempt to remove from _columns
 			try {
 				for (auto const &handle : c_handles)
@@ -152,7 +313,7 @@ QueryResult *SQLExec::create_table(const hsql::CreateStatement *statement) {
 		}
 
 	}
-	catch (std::exception& e) {
+	catch (...) {
 		try {
 			// attempt to remove from _tables
 			SQLExec::tables->del(t_handle);
@@ -164,65 +325,47 @@ QueryResult *SQLExec::create_table(const hsql::CreateStatement *statement) {
 }
 
 QueryResult *SQLExec::create_index(const hsql::CreateStatement *statement) {
+	Identifier index_name = statement->indexName;
+	Identifier table_name = statement->tableName;
 
-	// Get the underlying table
-	ColumnNames* column_names = new ColumnNames;
-	ColumnAttributes* column_attributes = new ColumnAttributes;
-	Tables::get_columns(statement->tableName, *column_names, *column_attributes);
+	// get underlying relation
+	DbRelation& table = SQLExec::tables->get_table(table_name);
 
-	Handles* index_handles = new Handles;
-	std::vector<char*>* index_columns = statement->indexColumns;
+	// check that given columns exist in table
+	const ColumnNames& table_columns = table.get_column_names();
+	for (auto const& col_name : *statement->indexColumns)
+		if (std::find(table_columns.begin(), table_columns.end(), col_name) == table_columns.end())
+			throw SQLExecError(std::string("Column '") + col_name + "' does not exist in " + table_name);
 
+	// insert a row for every column in index into _indices
 	ValueDict row;
-	int seq_count = 0;
-
-	row["table_name"] = statement->tableName;
-	row["index_name"] = statement->indexName;
-	row["index_type"] = statement->indexType;
-	if (statement->indexType == "BTREE")
-	{
-		row["is_unique"] = true;
-	}
-	else if (statement->indexType == "HASH")
-	{
-		row["is_unique"] = false;
-	}
-	// Insert a row for each column in index key into _indices
-	for (char* idx_col : *index_columns) {
-		// Check that all the index columns exist in the table
-		if (std::find(column_names->begin(), column_names->end(), idx_col)
-			!= column_names->end()) {
-
-			row["column_name"] = idx_col;
-			row["seq_in_index"] = ++seq_count;
-
-			Handle index_handle = indices->insert(&row);
-			index_handles->push_back(index_handle);
+	row["table_name"] = Value(table_name);
+	row["index_name"] = Value(index_name);
+	row["index_type"] = Value(statement->indexType);
+	row["is_unique"] = Value(std::string(statement->indexType) == "BTREE"); // assume HASH is non-unique -- leave uniqueness logic for another day...
+	int seq = 0;
+	Handles i_handles;
+	try {
+		for (auto const &col_name : *statement->indexColumns) {
+			row["seq_in_index"] = Value(++seq);
+			row["column_name"] = Value(col_name);
+			i_handles.push_back(SQLExec::indices->insert(&row));
 		}
-		// otherwise, throw an exception for nonexistant column
-		else {
-			std::string idx_col_name(idx_col);
-			throw DbRelationError("Index " + idx_col_name +
-				" does not exits in the table.");
-		}
+
+		DbIndex &index = SQLExec::indices->get_index(table_name, index_name);
+		index.create();
+
 	}
-
-	// delete from _indices if exception is thrown
-	auto guard_insert_into_indices = scopeGuard([&]()
-	{
-		for (Handle idx_handle : *index_handles)
-		{
-			indices->del(idx_handle);
+	catch (...) {
+		// attempt to remove from _indices
+		try {  // if any exception happens in the reversal below, we still want to re-throw the original exception
+			for (auto const &handle : i_handles)
+				SQLExec::indices->del(handle);
 		}
-	});
-
-	DbIndex& index = indices->get_index(statement->tableName, statement->indexName);
-	index.create();
-
-	guard_insert_into_indices.dismiss();
-
-	std::string idx_name = statement->indexName;
-	return new QueryResult("created index " + idx_name);
+		catch (...) {}
+		throw;  // re-throw the original exception (which should give the client some clue as to why it didn't work)
+	}
+	return new QueryResult("created index " + index_name);
 }
 
 // DROP ...
@@ -248,16 +391,19 @@ QueryResult *SQLExec::drop_table(const hsql::DropStatement *statement) {
 	// get the table
 	DbRelation& table = SQLExec::tables->get_table(table_name);
 
-	// drop any indices
-	IndexNames index_names = indices->get_index_names(table_name);
-	for(auto const index_name : index_names)
-	{
-		remove_rows(table_name, index_name);
+	// remove any indices
+	for (auto const& index_name : SQLExec::indices->get_index_names(table_name)) {
+		DbIndex& index = SQLExec::indices->get_index(table_name, index_name);
+		index.drop();  // drop the index
 	}
+	Handles* handles = SQLExec::indices->select(&where);
+	for (auto const& handle : *handles)
+		SQLExec::indices->del(handle);  // remove all rows from _indices for each index on this table
+	delete handles;
 
 	// remove from _columns schema
 	DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
-	Handles* handles = columns.select(&where);
+	handles = columns.select(&where);
 	for (auto const& handle : *handles)
 		columns.del(handle);
 	delete handles;
@@ -271,32 +417,24 @@ QueryResult *SQLExec::drop_table(const hsql::DropStatement *statement) {
 	return new QueryResult(std::string("dropped ") + table_name);
 }
 
-void SQLExec::remove_rows(Identifier name, Identifier index_name)
-{
-	ValueDict where;
-	where["table_name"] = name;
-	where["index_name"] = index_name;
-
-	Handles* idx_handles = indices->select(&where);
-
-	for (auto const& idx_handle : *idx_handles)
-	{
-		indices->del(idx_handle);
-	}
-	delete idx_handles;
-}
-
 QueryResult *SQLExec::drop_index(const hsql::DropStatement *statement) {
-	// get a reference to the index and invoke the drop method on it
-	DbIndex& index = 
-		indices->get_index(statement->name, statement->indexName);
+	Identifier table_name = statement->name;
+	Identifier index_name = statement->indexName;
+
+	// drop index
+	DbIndex& index = SQLExec::indices->get_index(table_name, index_name);
 	index.drop();
 
-	// remove all the rows from _indices for this index
-	remove_rows(statement->name, statement->indexName);
+	// remove rows from _indices for this index
+	ValueDict where;
+	where["table_name"] = Value(table_name);
+	where["index_name"] = Value(index_name);
+	Handles* handles = SQLExec::indices->select(&where);
+	for (auto const& handle : *handles)
+		SQLExec::indices->del(handle);
+	delete handles;
 
-	return new QueryResult("dropped index " + 
-		std::string(statement->indexName));
+	return new QueryResult("dropped index " + index_name);
 }
 
 QueryResult *SQLExec::show(const hsql::ShowStatement *statement) {
@@ -313,27 +451,39 @@ QueryResult *SQLExec::show(const hsql::ShowStatement *statement) {
 }
 
 QueryResult *SQLExec::show_index(const hsql::ShowStatement *statement) {
-
-	// Do a query on _indices for the given table name
-	ValueDict where;
-	where["table_name"] = Value(statement->tableName);
-	Handles* idx_handles = indices->select(&where);
-
 	ColumnNames* column_names = new ColumnNames;
 	ColumnAttributes* column_attributes = new ColumnAttributes;
-	tables->get_columns(Indices::TABLE_NAME, *column_names, *column_attributes);
+	column_names->push_back("table_name");
+	column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+	column_names->push_back("index_name");
+	column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+	column_names->push_back("column_name");
+	column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+	column_names->push_back("seq_in_index");
+	column_attributes->push_back(ColumnAttribute(ColumnAttribute::INT));
+
+	column_names->push_back("index_type");
+	column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+	column_names->push_back("is_unique");
+	column_attributes->push_back(ColumnAttribute(ColumnAttribute::BOOLEAN));
+
+	ValueDict where;
+	where["table_name"] = statement->tableName;
+	Handles* handles = SQLExec::indices->select(&where);
+	u_long n = handles->size();
 
 	ValueDicts* rows = new ValueDicts;
-	for (auto const handle : *idx_handles)
-	{
-		ValueDict* row = indices->project(handle);
+	for (auto const& handle : *handles) {
+		ValueDict* row = SQLExec::indices->project(handle, column_names);
 		rows->push_back(row);
 	}
-
-	std::string message = "successfully returned " +
-		std::to_string(idx_handles->size()) + " rows";
-
-	return new QueryResult(column_names, column_attributes, rows, message);
+	delete handles;
+	return new QueryResult(column_names, column_attributes, rows,
+		"successfully returned " + std::to_string(n) + " rows");
 }
 
 QueryResult *SQLExec::show_tables() {
@@ -344,19 +494,22 @@ QueryResult *SQLExec::show_tables() {
 	column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
 
 	Handles* handles = SQLExec::tables->select();
-	//u_long n = handles->size() - 3;
+	u_long n = handles->size() - 3;
 
 	ValueDicts* rows = new ValueDicts;
 	for (auto const& handle : *handles) {
 		ValueDict* row = SQLExec::tables->project(handle, column_names);
 		Identifier table_name = row->at("table_name").s;
-		if (table_name != Tables::TABLE_NAME && table_name != Columns::TABLE_NAME
-			&& table_name != Indices::TABLE_NAME)
+		if (table_name != Tables::TABLE_NAME
+			&& table_name != Columns::TABLE_NAME
+			&& table_name != Indices::TABLE_NAME) {
+
 			rows->push_back(row);
+		}
 	}
 	delete handles;
 	return new QueryResult(column_names, column_attributes, rows,
-		"successfully returned " + std::to_string(rows->size()) + " rows");
+		"successfully returned " + std::to_string(n) + " rows");
 }
 
 QueryResult *SQLExec::show_columns(const hsql::ShowStatement *statement) {

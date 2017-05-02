@@ -36,6 +36,8 @@ public:
 	virtual void put(RecordID record_id, const Dbt &data) throw(DbBlockNoRoomError) = 0;
 	virtual void del(RecordID record_id) = 0;
 	virtual RecordIDs* ids() const = 0;
+    virtual void clear() = 0;
+	virtual u_int16_t size() const = 0;
 
 	virtual Dbt* get_block() {return &block;}
 	virtual void* get_data() {return block.get_data();}
@@ -77,7 +79,7 @@ public:
 	ColumnAttribute(DataType data_type) : data_type(data_type) {}
 	virtual ~ColumnAttribute() {}
 
-	virtual DataType get_data_type() const { return data_type; }
+	virtual DataType get_data_type() { return data_type; }
 	virtual void set_data_type(DataType data_type) {this->data_type = data_type;}
 
 protected:
@@ -98,6 +100,7 @@ public:
 
 	bool operator==(const Value &other) const;
     bool operator!=(const Value &other) const;
+    bool operator<(const Value &other) const;
 };
 
 typedef std::string Identifier;
@@ -144,6 +147,7 @@ public:
     virtual const ColumnNames& get_column_names() const { return column_names; }
     virtual const ColumnAttributes get_column_attributes() const { return column_attributes; }
     virtual ColumnAttributes* get_column_attributes(const ColumnNames &select_column_names) const;
+    virtual Identifier get_table_name() const { return table_name; }
 
 protected:
 	Identifier table_name;

@@ -12,42 +12,10 @@
 #include "SQLParser.h"
 #include "ParseTreeToString.h"
 #include "SQLExec.h"
-
-const bool RUN_TEST = false;
+#include "btree.h"
 
 void initialize_environment(char *envHome);
 
-// test cases run when RUN_TEST is set to true
-std::vector<std::string> test_cases = {
-	"show tables", 
-	"create table foo (id int, data text)",
-	"show tables",
-	"show columns from foo",
-	"create index fx on foo (id)",
-	"create index fz on foo (data)",
-	"show index from foo",
-	"insert into foo (id, data) values (1,\"one\")",
-	"select * from foo",
-	"insert into foo values (2, \"Two\"); insert into foo values (3, \"Three\"); insert into foo values (99, \"wowzers, Penny!!\")",
-	"select * from foo",
-	"select * from foo where id=3",
-	"select * from foo where id=1 and data=\"one\"",
-	"select * from foo where id=99 and data=\"nine\"",
-	"select id from foo",
-	"select data from foo where id=1",
-	"delete from foo where id=1",
-	"select * from foo",
-	"delete from foo",
-	"select * from foo",
-	"insert into foo values (2, \"Two\"); insert into foo values (3, \"Three\"); insert into foo values (99, \"wowzers, Penny!!\")",
-	"select * from foo",
-	"drop index fz from foo",
-	"show index from foo",
-	"insert into foo (id) VALUES (100)",
-	"select * from foo",
-	"drop table foo",
-	"show tables"
-};
 
 int main(int argc, char *argv[]) {
 
@@ -57,29 +25,17 @@ int main(int argc, char *argv[]) {
     }
     initialize_environment(argv[1]);
 
-	// set RUN_TEST to true to run test cases
-	// (will allow additional SQL commands when complete)
-	int test_count = 0;
-
     while (true) {
         std::cout << "SQL> ";
-		std::string query;
-		if(RUN_TEST==true && test_count < test_cases.size())
-		{
-			query = test_cases.at(test_count);
-			std::cout << query << std::endl;
-			++test_count;
-		} 
-    	else
-		{
-			std::getline(std::cin, query);
-		}        
+        std::string query;
+        std::getline(std::cin, query);
         if (query.length() == 0)
             continue;
         if (query == "quit")
             break;
         if (query == "test") {
-            std::cout << (test_heap_storage() ? "ok" : "failed") << std::endl;
+            std::cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << std::endl;
+            std::cout << "test_btree: " << (test_btree() ? "ok" : "failed") << std::endl;
             continue;
         }
 

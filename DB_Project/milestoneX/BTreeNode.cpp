@@ -10,7 +10,12 @@
 
 BTreeNode::BTreeNode(HeapFile &file, BlockID block_id, const KeyProfile& key_profile, bool create)
         : block(nullptr), file(file), id(block_id), key_profile(key_profile) {
-    this->block = create ? file.get_new() : file.get(block_id);
+    if (create) {
+        this->block = file.get_new();
+        this->id = this->block->get_block_id();
+    } else {
+        this->block = file.get(block_id);
+    }
 }
 
 BTreeNode::~BTreeNode() {
@@ -84,7 +89,7 @@ Dbt *BTreeNode::marshal_handle(Handle handle) {
     char *bytes = new char[sizeof(BlockID) + sizeof(RecordID)];
     Dbt *dbt = new Dbt(bytes, sizeof(BlockID) + sizeof(RecordID));
     *(BlockID *)bytes = handle.first;
-    *(RecordID *)(bytes + sizeof(RecordID)) = handle.second;
+    *(RecordID *)(bytes + sizeof(BlockID)) = handle.second;
     return dbt;
 }
 
@@ -177,12 +182,12 @@ BTreeInterior::BTreeInterior(HeapFile &file, BlockID block_id, const KeyProfile&
         : BTreeNode(file, block_id, key_profile, create), first(0), pointers(), boundaries() {
     if (!create) {
         RecordIDs *record_id_list = this->block->ids();
-        RecordID i = 0;
+        RecordID i = 1;
         for (auto const& record_id: *record_id_list) {
-            if (i == 0) {
+            if (i == 1) {
                 // first pointer
                 this->first = get_block_id(i);
-            } else if (i%2 == 0) {
+            } else if (i%2 != 0) {
                 // pointer
                 this->pointers.push_back(get_block_id(i));
             } else {
@@ -320,12 +325,12 @@ BTreeLeaf::BTreeLeaf(HeapFile &file, BlockID block_id, const KeyProfile& key_pro
         : BTreeNode(file, block_id, key_profile, create), next_leaf(0), key_map() {
     if (!create) {
         RecordIDs *record_id_list = this->block->ids();
-        RecordID i = 0;
+        RecordID i = 1;
         for (auto const& record_id: *record_id_list) {
-            if (i == record_id_list->size() - 1) {
+            if (i == record_id_list->size()) {
                 // next leaf block
                 this->next_leaf = get_block_id(i);
-            } else if (i%2 != 0) {
+            } else if (i%2 == 0) {
                 // record i-1: handle, record i: key
                 KeyValue *key_value = get_key(i);
                 this->key_map[*key_value] = get_handle(i-1);

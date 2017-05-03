@@ -1,4 +1,5 @@
 #include "btree.h"
+#include <cassert>
 
 BTreeIndex::BTreeIndex(DbRelation& relation, Identifier name, ColumnNames key_columns, bool unique) :
 	DbIndex(relation, name, key_columns, unique),
@@ -96,6 +97,22 @@ void BTreeIndex::insert(Handle handle)
 {
 	// Insert a row with the given handle. Row must exist in relation already.
 	KeyValue* value = tkey(relation.project(handle));	// DELETE - why (handle, key) in Python
+
+	Insertion split_root = _insert(root, stat->get_height(), value, handle);
+
+	// if we split the root, grow the tree up one level
+	if (!BTreeNode::insertion_is_none(split_root))
+	{
+		root = new BTreeInterior(file, 0, key_profile, true);
+		BTreeInterior* root_node = dynamic_cast<BTreeInterior*>(root);
+		root_node->set_first(root->get_id());
+		root_node->insert(&split_root.second, split_root.first);
+		root_node->save();
+		stat->set_root_id(root_node->get_id());
+		stat->set_height(stat->get_height() + 1);
+		stat->save();
+		root = root_node;
+	}
 }
 
 void BTreeIndex::del(Handle handle)
@@ -112,7 +129,6 @@ KeyValue* BTreeIndex::tkey(const ValueDict* key) const
 		value->push_back(k.second);
 	}
 	return value;
-	//return tuple(key[column_name] for column_name in self.key)
 }
 
 void BTreeIndex::build_key_profile()
@@ -147,14 +163,139 @@ Handles* BTreeIndex::_lookup(BTreeNode* node, uint height, const KeyValue* key) 
 	}
 }
 
+// Recursive insert. If a split happens at this level, return the (new node, boundary) of the split
 Insertion BTreeIndex::_insert(BTreeNode* node, uint height, const KeyValue* key, Handle handle)
 {
-	return {};
+	Insertion insertion;
+
+	// base case: a leaf node
+	BTreeLeaf* leaf_node = dynamic_cast<BTreeLeaf*>(node);
+	if (leaf_node)
+	{
+		// returns insertion_none() or actual insertion
+		insertion = leaf_node->insert(key, handle);
+		if (BTreeNode::insertion_is_none(insertion))
+		{
+			leaf_node->save();
+		}
+		return insertion;
+	}
+	// recursive case: interior node
+	BTreeInterior* interior_node = dynamic_cast<BTreeInterior*>(node);
+	if (interior_node)
+	{
+		//Insertion new_kid = _insert(interior_node->find(key, height), height - 1, key, handle);
+		insertion = _insert(interior_node->find(key, height), height - 1, key, handle);
+
+		if (!BTreeNode::insertion_is_none(insertion))
+		{
+			insertion = interior_node->insert(&insertion.second, insertion.first);
+			if (BTreeNode::insertion_is_none(insertion))
+			{
+				interior_node->save();
+			}
+			return insertion;	// TODO: fix whatever this is
+		}
+		return insertion;
+	}
+	// if node not regognized as root or interior, there is a problem
+	throw DbRelationError("node not recognized as root or interior");
 }
 
 bool test_btree()
 {
-	return false;
+	//ColumnNames column_names = { "a", "b" };
+	ColumnNames column_names;
+	column_names.push_back("a");
+	column_names.push_back("b");
+
+	//ColumnAttributes column_attributes = { ColumnAttribute::DataType::INT, ColumnAttribute::DataType::INT };
+	ColumnAttributes column_attributes;
+	ColumnAttribute column_attribute(ColumnAttribute::INT);
+	column_attributes.push_back(column_attribute);
+	column_attributes.push_back(column_attribute);
+	HeapTable table("foo", column_names, column_attributes);
+	table.create_if_not_exists();
+	ValueDict row1;
+	row1["a"] = Value(12);
+	row1["b"] = Value(99);
+	table.insert(&row1);
+	ValueDict row2;
+	row2["a"] = Value(88);
+	row2["b"] = Value(101);
+	table.insert(&row2);
+	ValueDict row;	// TODO: test that clear is working and not deleting everything
+	for (int i = 0; i < 1000; ++i)
+	{
+		row["a"] = Value(i + 100);
+		row["b"] = Value(-i);
+		table.insert(&row);
+		row.clear();
+	}
+	ColumnNames idx_column_names = { "a" };
+	BTreeIndex index(table, "fooindex", idx_column_names, true);
+	index.create();
+	ValueDict test;
+	test["a"] = Value(12);
+	Handles* handles = index.lookup(&test);
+	ValueDict* result = nullptr;
+	for (auto handle : *handles)	// should only be one of these...
+	{
+		result = table.project(handle);
+		assert(*result == row1);	// this will most likely break
+	}
+
+	test.clear();
+	handles->clear();
+	result->clear();
+
+	test["a"] = Value(88);
+	handles = index.lookup(&test);
+	for (auto handle : *handles)
+	{
+		result = table.project(handle);
+		assert(*result == row2);
+	}
+
+	test.clear();
+	handles->clear();
+	result->clear();
+
+	row.clear();	// have an empty row TODO: check if redundant
+	test["a"] = Value(6);
+	handles = index.lookup(&test);
+	for (auto handle : *handles)
+	{
+		result = table.project(handle);
+		assert(*result == row);		// this is going to break too
+	}
+
+	test.clear();
+	row.clear();
+	handles->clear();
+	result->clear();
+	for (int j = 0; j < 10; ++j)
+	{
+		for(int i = 0; i <1000; ++i)
+		{
+			test["a"] = Value(i + 100);
+			handles = index.lookup(&test);
+			row["a"] = Value(i + 100);
+			row["b"] = Value(-i);
+			for(auto handle : *handles)
+			{
+				result = table.project(handle);
+				assert(*result == row);
+			}
+			test.clear();
+			row.clear();
+			handles->clear();
+			result->clear();
+		}
+	}
+
+	table.drop();
+	return true;
 }
 
 

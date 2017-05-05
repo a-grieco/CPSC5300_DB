@@ -597,7 +597,6 @@ bool test_heap_storage() {
         if (!test_compare(table, handle, i++, b))
             return false;
     std::cout << "del ok" << std::endl;
-
     table.drop();
     return true;
 }

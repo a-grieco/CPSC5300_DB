@@ -1,11 +1,12 @@
 #include "btree.h"
 #include <cassert>
+#include <string>
 
 BTreeIndex::BTreeIndex(DbRelation& relation, Identifier name, ColumnNames key_columns, bool unique) :
 	DbIndex(relation, name, key_columns, unique),
 	closed(true), stat(nullptr), root(nullptr), file(relation.get_table_name() + "-" + this->name)
 {
-	build_key_profile();
+	build_key_profile();	//TODO write this one!!
 	// TODO: throw an error if not unique
 }
 
@@ -83,7 +84,11 @@ Handles* BTreeIndex::lookup(ValueDict* key) const
 	// Find all the rows whose columns are equal to key. Assumes key is a 
 	// dictionary whose keys are the column names in the index.Returns a list
 	// of row handles.
-	return _lookup(root, stat->get_height(), tkey(key));
+	KeyValue* kk = tkey(key);
+	uint height = stat->get_height();
+	return _lookup(root, height, kk);
+
+	//return _lookup(root, stat->get_height(), tkey(key));
 	/*return self._lookup(self.root, self.stat.height, self._tkey(key))
 	return nullptr;*/
 }
@@ -95,16 +100,18 @@ Handles* BTreeIndex::range(ValueDict* min_key, ValueDict* max_key) const
 
 void BTreeIndex::insert(Handle handle)
 {
-	// Insert a row with the given handle. Row must exist in relation already.
-	KeyValue* value = tkey(relation.project(handle));	// DELETE - why (handle, key) in Python
+	ValueDict row;
 
-	Insertion split_root = _insert(root, stat->get_height(), value, handle);
+	// Insert a row with the given handle. Row must exist in relation already.
+	// need only the column names from the given indices, hence the handle & key 
+	KeyValue* key_value = tkey(relation.project(handle, &key_columns));
+	Insertion split_root = _insert(root, stat->get_height(), key_value, handle);
 
 	// if we split the root, grow the tree up one level
 	if (!BTreeNode::insertion_is_none(split_root))
 	{
-		root = new BTreeInterior(file, 0, key_profile, true);
-		BTreeInterior* root_node = dynamic_cast<BTreeInterior*>(root);
+		BTreeInterior* root_node = new BTreeInterior(file, 0, key_profile, true);
+		//BTreeInterior* root_node = (BTreeInterior*)root;
 		root_node->set_first(root->get_id());
 		root_node->insert(&split_root.second, split_root.first);
 		root_node->save();
@@ -133,33 +140,39 @@ KeyValue* BTreeIndex::tkey(const ValueDict* key) const
 
 void BTreeIndex::build_key_profile()
 {
+	ColumnAttributes* column_attributes = relation.get_column_attributes(key_columns);
+
+	for (auto column_attribute : *column_attributes)
+	{
+		key_profile.push_back(column_attribute.get_data_type());
+	}
+	delete column_attributes;
 }
 
 Handles* BTreeIndex::_lookup(BTreeNode* node, uint height, const KeyValue* key) const
 {
 	// Recursive lookup
 	Handles* handles = new Handles;
-	BTreeLeaf* leaf_node = dynamic_cast<BTreeLeaf*>(node);
+	//Handle handle;
 
 	// if node is a leaf, return handle
-	if (leaf_node)
+	if (height == 1 /*leaf_node*/)
 	{
-		Handle handle = leaf_node->find_eq(key);
-		handles->push_back(handle);
+		try
+		{
+			BTreeLeaf* leaf_node = (BTreeLeaf*)node;
+			//handle = leaf_node->find_eq(key);
+			handles->push_back(leaf_node->find_eq(key));
+		}
+		catch (std::out_of_range) {}
+
 		return handles;
 	}
 	// otherwise, node is interior, recurse to next level
 	else
 	{
-		BTreeInterior* interior_node = dynamic_cast<BTreeInterior*>(node);
-		if (interior_node)
-		{
-			return _lookup(interior_node->find(key, height), height - 1, key);
-		}
-		else
-		{
-			throw DbRelationError("not recognized as interior or leaf node");
-		}
+		BTreeInterior* interior_node = (BTreeInterior*)node;
+		return _lookup(interior_node->find(key, height), height - 1, key);
 	}
 }
 
@@ -168,42 +181,85 @@ Insertion BTreeIndex::_insert(BTreeNode* node, uint height, const KeyValue* key,
 {
 	Insertion insertion;
 
+	//BTreeLeaf* leaf_node = dynamic_cast<BTreeLeaf*>(node);
+
 	// base case: a leaf node
-	BTreeLeaf* leaf_node = dynamic_cast<BTreeLeaf*>(node);
-	if (leaf_node)
+	if (height == 1 /*leaf_node*/)
 	{
-		// returns insertion_none() or actual insertion
-		insertion = leaf_node->insert(key, handle);
-		if (BTreeNode::insertion_is_none(insertion))
+		try
 		{
+			BTreeLeaf* leaf_node = (BTreeLeaf*)node;
+			insertion = leaf_node->insert(key, handle);
 			leaf_node->save();
+			//return BTreeNode::insertion_none();
 		}
+		catch (DbRelationError) {}	//TODO: what to do here?
+		// returns insertion_none() or actual insertion as appropriate
 		return insertion;
 	}
-	// recursive case: interior node
-	BTreeInterior* interior_node = dynamic_cast<BTreeInterior*>(node);
-	if (interior_node)
-	{
-		//Insertion new_kid = _insert(interior_node->find(key, height), height - 1, key, handle);
-		insertion = _insert(interior_node->find(key, height), height - 1, key, handle);
 
-		if (!BTreeNode::insertion_is_none(insertion))
+	// recursive case: interior node
+	BTreeInterior* interior_node = (BTreeInterior*)node;
+	insertion = _insert(interior_node->find(key, height), height - 1, key, handle);
+
+	if (!BTreeNode::insertion_is_none(insertion))
+	{
+		try
 		{
 			insertion = interior_node->insert(&insertion.second, insertion.first);
-			if (BTreeNode::insertion_is_none(insertion))
-			{
-				interior_node->save();
-			}
-			return insertion;	// TODO: fix whatever this is
+			interior_node->save();
 		}
-		return insertion;
+		catch (DbRelationError) {}	// TODO: what to do...
 	}
-	// if node not regognized as root or interior, there is a problem
-	throw DbRelationError("node not recognized as root or interior");
+	return insertion;
+}
+
+void print_table(HeapTable* table)
+{
+	Handles* x = table->select();
+	ValueDicts* y = table->project(x);
+
+	for (auto z : *y)
+	{
+		std::vector<std::map<std::basic_string<char>, Value>*>::value_type xxx = z;
+
+		for (auto zz : *z)
+		{
+			std::cout << "row[\"" << zz.first << "\"] = " << std::to_string(zz.second.n)
+				<< " inserted" << std::endl;
+		}
+	}
+	std::cout << std::endl;
+}
+
+void print_table(HeapTable* table, int skip)
+{
+	int count = 0;
+	Handles* x = table->select();
+	ValueDicts* y = table->project(x);
+
+	for (auto z : *y)
+	{
+		if (count % skip == 0)
+		{
+			std::vector<std::map<std::basic_string<char>, Value>*>::value_type xxx = z;
+
+			for (auto zz : *z)
+			{
+				std::cout << "row[\"" << zz.first << "\"] = " << std::to_string(zz.second.n)
+					<< " inserted" << std::endl;
+			}
+		}
+		++count;
+	}
+	std::cout << std::endl;
 }
 
 bool test_btree()
 {
+
+	std::cout << "********************** BTree Test **********************" << std::endl;	//DELETE ME
+
 	//ColumnNames column_names = { "a", "b" };
 	ColumnNames column_names;
 	column_names.push_back("a");
@@ -215,15 +271,24 @@ bool test_btree()
 	column_attributes.push_back(column_attribute);
 	column_attributes.push_back(column_attribute);
 	HeapTable table("foo", column_names, column_attributes);
-	table.create_if_not_exists();
+	table.create();
 	ValueDict row1;
 	row1["a"] = Value(12);
 	row1["b"] = Value(99);
 	table.insert(&row1);
+
+	std::cout << "********* row1 test *********" << std::endl;
+	print_table(&table);
+
 	ValueDict row2;
 	row2["a"] = Value(88);
 	row2["b"] = Value(101);
 	table.insert(&row2);
+	//std::cout << "row1[\"a\"] = Value(88);\nrow1[\"b\"] = Value(101);\ninserted" << std::endl;
+
+	std::cout << "********* row2 test *********" << std::endl;
+	print_table(&table);
+
 	ValueDict row;	// TODO: test that clear is working and not deleting everything
 	for (int i = 0; i < 1000; ++i)
 	{
@@ -232,68 +297,115 @@ bool test_btree()
 		table.insert(&row);
 		row.clear();
 	}
+	std::cout << "inserted 1000 rows" << std::endl;
+	std::cout << "********* show one every 100 test *********" << std::endl;
+	print_table(&table, 100);
+
 	ColumnNames idx_column_names = { "a" };
 	BTreeIndex index(table, "fooindex", idx_column_names, true);
 	index.create();
+	std::cout << "created a btree index..." << std::endl;
+
 	ValueDict test;
 	test["a"] = Value(12);
 	Handles* handles = index.lookup(&test);
-	ValueDict* result = nullptr;
+	ValueDicts results;
 	for (auto handle : *handles)	// should only be one of these...
 	{
-		result = table.project(handle);
-		assert(*result == row1);	// this will most likely break
+		results.push_back(table.project(handle));
+	}
+
+	for (auto result : results)
+	{
+		if (test.at("a") != result->at("a"))
+		{
+			std::cout << "test.at(a) != result->at(a)" << std::endl;
+		}
 	}
 
 	test.clear();
 	handles->clear();
-	result->clear();
+	results.clear();
 
 	test["a"] = Value(88);
 	handles = index.lookup(&test);
 	for (auto handle : *handles)
 	{
-		result = table.project(handle);
-		assert(*result == row2);
+		results.push_back(table.project(handle));
+		//assert(*result == row2);
+	}
+
+	for (auto result : results)
+	{
+		ValueDict::mapped_type buz = test.at("a");
+		std::map<std::basic_string<char>, Value>::mapped_type boz = result->at("a");
+		if (test.at("a") != result->at("a"))
+		{
+			std::cout << "test.at(a) != result->at(a)" << std::endl;
+		}
 	}
 
 	test.clear();
 	handles->clear();
-	result->clear();
+	results.clear();
 
 	row.clear();	// have an empty row TODO: check if redundant
 	test["a"] = Value(6);
 	handles = index.lookup(&test);
 	for (auto handle : *handles)
 	{
-		result = table.project(handle);
-		assert(*result == row);		// this is going to break too
+		results.push_back(table.project(handle));
+		//assert(*result == row);		// this is going to break too
+	}
+	for (auto result : results)
+	{
+		ValueDict::mapped_type buz = test.at("a");
+		std::map<std::basic_string<char>, Value>::mapped_type boz = result->at("a");
+		if (test.at("a") != result->at("a"))
+		{
+			std::cout << "test.at(a) != result->at(a)" << std::endl;
+		}
 	}
 
 	test.clear();
 	row.clear();
 	handles->clear();
-	result->clear();
+	results.clear();
 	for (int j = 0; j < 10; ++j)
 	{
-		for(int i = 0; i <1000; ++i)
+		for (int i = 0; i < 1000; ++i)
 		{
 			test["a"] = Value(i + 100);
 			handles = index.lookup(&test);
 			row["a"] = Value(i + 100);
 			row["b"] = Value(-i);
-			for(auto handle : *handles)
+			for (auto handle : *handles)
 			{
-				result = table.project(handle);
-				assert(*result == row);
+				results.push_back(table.project(handle));
+				//assert(*result == row);
 			}
+			for (auto result : results)
+			{
+				ValueDict::mapped_type buz = test.at("a");
+				std::map<std::basic_string<char>, Value>::mapped_type boz = result->at("a");
+				if (test.at("a") != result->at("a"))
+				{
+					std::cout << "test.at(a) != result->at(a)" << std::endl;
+				}
+			}
+
 			test.clear();
 			row.clear();
 			handles->clear();
-			result->clear();
+			results.clear();
+
+			if (i % 100 == 0)
+			{
+				std::cout << "on the " << i*j << "th one...";
+			}
 		}
 	}
-
+	index.drop();
 	table.drop();
 	return true;
 }

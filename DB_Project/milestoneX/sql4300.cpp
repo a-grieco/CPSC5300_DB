@@ -20,17 +20,18 @@ void initialize_environment(char *envHome);
 
 // test cases run when RUN_TEST is set to true
 std::vector<std::string> test_cases = {
+	"test",
 	"create table foo (id int, data text)",
 	"insert into foo values (1,\"one\");insert into foo values(2,\"two\"); insert into foo values (2, \"another two\")",
 	"select * from foo",
 	"create index fxx on foo (id)",
 	"show index from foo",
 	"delete from foo where data = \"two\"",
-	"select * from foo"/*,
+	"select * from foo",
 	"create index fxx on foo (id)",
 	"show index from foo",
 	"insert into foo values (4,\"four\")",
-	"select * from foo"*/
+	"select * from foo"
 };
 
 int main(int argc, char *argv[]) {

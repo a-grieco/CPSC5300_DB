@@ -1,7 +1,6 @@
 #include "btree.h"
 #include <cassert>
 #include <string>
-#include "scopeguard.h"
 
 BTreeIndex::BTreeIndex(DbRelation& relation, Identifier name,
 	ColumnNames key_columns, bool unique) :
@@ -36,14 +35,12 @@ void BTreeIndex::create()
 	closed = false;
 
 	// build the index, add every row from relation into index
-	Handles* handles = relation.select();
-	Handles* handles_iserted = new Handles;
+	Handles* i_handles = relation.select();
 	try
 	{
-		for (auto handle : *handles)
+		for (auto i_handle : *i_handles)
 		{
-			insert(handle);
-			handles_iserted->push_back(handle);
+			insert(i_handle);
 		}
 	}
 	catch (DbRelationError)
@@ -51,8 +48,7 @@ void BTreeIndex::create()
 		file.drop();
 		throw;
 	}
-	delete handles;
-	delete handles_iserted;
+	delete i_handles;
 }
 
 void BTreeIndex::drop()
@@ -188,7 +184,7 @@ Insertion BTreeIndex::_insert(BTreeNode* node, uint height,
 	Insertion insertion;
 
 	// base case: a leaf node
-	if (height == 1 /*leaf_node*/)
+	if (height == 1)
 	{
 		BTreeLeaf* leaf_node = (BTreeLeaf*)node;
 		insertion = leaf_node->insert(key, handle);

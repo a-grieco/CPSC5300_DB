@@ -118,7 +118,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Program Files\Oracle\Berkeley DB 12cR1 6.2.23\include;$(INCLUDE);C:\Users\amgrieco\Dropbox\CPSC5300_Databases\Project\sqlparser\ConsoleApplication1\src;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Program Files\Oracle\Berkeley DB 12cR1 6.2.23\include;$(SolutionDir)sqlparser_src\src;$(INCLUDE);$(IncludePath)</IncludePath>
     <LibraryPath>C:\Program Files\Oracle\Berkeley DB 12cR1 6.2.23\lib;$(LIB);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

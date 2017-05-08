@@ -1,6 +1,8 @@
 #include "btree.h"
 #include <cassert>
 #include <string>
+#include "schema_tables.h"
+#include "SQLExec.h"
 
 BTreeIndex::BTreeIndex(DbRelation& relation, Identifier name,
 	ColumnNames key_columns, bool unique) :
@@ -103,8 +105,6 @@ Handles* BTreeIndex::range(ValueDict* min_key, ValueDict* max_key) const
 
 void BTreeIndex::insert(Handle handle)
 {
-	ValueDict row;
-
 	// Insert a row with the given handle. Row must exist in relation already.
 	// need only the column names from the given indices, hence the handle & key 
 	KeyValue* key_value = tkey(relation.project(handle, &key_columns));
@@ -205,9 +205,9 @@ Insertion BTreeIndex::_insert(BTreeNode* node, uint height,
 }
 
 // returns true if the results match the row being tested; otherwise false
-bool test_passes(HeapTable* table, Handles* handles, ValueDicts results,
-	const ValueDict& row)
+bool test_passes(HeapTable* table, Handles* handles, const ValueDict& row)
 {
+	ValueDicts results;
 	for (auto handle : *handles)
 	{
 		results.push_back(table->project(handle));
@@ -249,7 +249,6 @@ bool test_btree()
 		row["a"] = Value(i + 100);
 		row["b"] = Value(-i);
 		table.insert(&row);
-		row.clear();
 	}
 
 	ColumnNames idx_column_names = { "a" };
@@ -259,45 +258,34 @@ bool test_btree()
 	ValueDict test;
 	test["a"] = Value(12);
 	Handles* handles = index.lookup(&test);
-	ValueDicts results;
 
-	if (!test_passes(&table, handles, results, row1))
+	if (!test_passes(&table, handles, row1))
 	{
 		std::cout << "row1 test failed" << std::endl;
 		return false;
 	}
-
-	test.clear();
 	handles->clear();
-	results.clear();
 
 	test["a"] = Value(88);
 	handles = index.lookup(&test);
 
-	if (!test_passes(&table, handles, results, row2))
+	if (!test_passes(&table, handles, row2))
 	{
 		std::cout << "row2 test failed" << std::endl;
 		return false;
 	}
-
-	test.clear();
 	handles->clear();
-	results.clear();
 
 	// this test should not return any matching values
 	test["a"] = Value(6);
 	handles = index.lookup(&test);
 
-	if (!test_passes(&table, handles, results, row))
+	if (!test_passes(&table, handles, row))
 	{
 		std::cout << "unmatched test failed" << std::endl;
 		return false;
 	}
-
-	test.clear();
-	row.clear();
 	handles->clear();
-	results.clear();
 
 	for (int j = 0; j < 10; ++j)
 	{
@@ -308,18 +296,14 @@ bool test_btree()
 			row["a"] = Value(i + 100);
 			row["b"] = Value(-i);
 
-			if (!test_passes(&table, handles, results, row))
+			if (!test_passes(&table, handles, row))
 			{
 				std::cout << "test for row[\"a\"] = Value(" << i + 100 <<
 					"] and row[\"b\"] = Value(" << -i << "] failed\n" <<
 					"where j = " << j << " and i = " << i << std::endl;
 				return false;
 			}
-
-			test.clear();
-			row.clear();
 			handles->clear();
-			results.clear();
 		}
 	}
 

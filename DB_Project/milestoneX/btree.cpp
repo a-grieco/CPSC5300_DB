@@ -192,9 +192,19 @@ BTreeNode *BTreeBase::find(BTreeInterior *node, uint height, const KeyValue* key
 }
 
 // Delete an index entry
-void BTreeBase::del(Handle handle) {
-	throw DbRelationError("Don't know how to delete from a BTree index yet");
-	// FIXME
+void BTreeBase::del(Handle handle)
+{
+	KeyValue* d_tkey = tkey(relation.project(handle));
+	BTreeLeafBase* leaf = _lookup(root, stat->get_height(), d_tkey);
+
+	LeafMap leaf_keys = leaf->get_key_map();
+	if (leaf_keys.find(*d_tkey) == leaf_keys.end())
+	{
+		throw DbRelationError("key to be deleted not found in index");
+	}
+
+	leaf_keys.erase(*d_tkey);
+	leaf->save();
 }
 
 // Figure out the data types of each key component and encode them in self.key_profile
@@ -299,26 +309,22 @@ BTreeTable::BTreeTable(Identifier table_name, ColumnNames column_names,
 	ColumnAttributes column_attributes, const ColumnNames& primary_key)
 	: DbRelation(table_name, column_names, column_attributes, primary_key)
 {
-	//throw DbRelationError("Btree Table not implemented"); // FIXME
 	ColumnNames non_key_column_names;
 	ColumnAttributes non_key_column_attributes;
 
-	//std::vector<Identifier>::iterator it_column_name = column_names.begin();
-	//std::vector<ColumnAttribute>::iterator it_column_attribute = column_attributes.begin();
-
 	int count = 0;
-	for (auto column_name : column_names)	// TODO: make not ugly
+	for (auto column_name : column_names)	
 	{
-		if (std::find(primary_key.begin(), primary_key.end(), column_name) 
+		if (std::find(primary_key.begin(), primary_key.end(), column_name)
 			== primary_key.end())
 		{
 			non_key_column_names.push_back(column_name);
 			non_key_column_attributes.push_back(column_attributes.at(count));
-			count++;
 		}
-		index = new BTreeFile(*this, table_name, primary_key, non_key_column_names,
-			non_key_column_attributes, true);
+		count++;
 	}
+	index = new BTreeFile(*this, table_name, primary_key, non_key_column_names,
+		non_key_column_attributes, true);
 }
 
 void BTreeTable::create()
@@ -332,7 +338,7 @@ void BTreeTable::create_if_not_exists()
 	{
 		open();
 	}
-	catch(DbRelationError)
+	catch (DbRelationError)
 	{
 		create();
 	}
@@ -340,22 +346,256 @@ void BTreeTable::create_if_not_exists()
 
 void BTreeTable::drop()
 {
-	
+	index->drop();
 }
-void BTreeTable::open() {}
-void BTreeTable::close() {}
-Handle BTreeTable::insert(const ValueDict* row) { return Handle(); }
-void BTreeTable::update(const Handle handle, const ValueDict* new_values) {}
-void BTreeTable::del(const Handle handle) {}
-Handles* BTreeTable::select() { return nullptr; }
-Handles* BTreeTable::select(const ValueDict* where) { return nullptr; }
-Handles* BTreeTable::select(Handles *current_selection, const ValueDict* where) { return nullptr; }
-ValueDict* BTreeTable::project(Handle handle) { return nullptr; }
-ValueDict* BTreeTable::project(Handle handle, const ColumnNames* column_names) { return nullptr; }
-ValueDict* BTreeTable::validate(const ValueDict* row) const { return nullptr; }
-bool BTreeTable::selected(Handle handle, const ValueDict* where) { return false; }
+
+void BTreeTable::open()
+{
+	index->open();
+}
+
+void BTreeTable::close()
+{
+	index->close();
+}
+
+Handle BTreeTable::insert(const ValueDict* row)
+{
+	ValueDict* _row = validate(row);
+	index->insert_value(_row);
+
+	return Handle(*(index->tkey(_row)));
+}
+
+void BTreeTable::update(const Handle handle, const ValueDict* new_values)
+{
+	ValueDict* row = project(handle);
+
+	// create a copy of row (new_row)
+	ValueDict* new_row = new ValueDict;
+	*new_row = *row;
+
+	for (auto key : *new_values)
+	{
+		new_row->at(key.first) = new_values->at(key.first);
+	}
+
+	new_row = validate(new_row);
+	KeyValue* new_tkey = index->tkey(new_row);
+
+	index->del(handle);
+	index->insert_value(new_row);
+}
+
+void BTreeTable::del(const Handle handle)
+{
+	index->del(handle);
+}
+
+Handles* BTreeTable::select()
+{
+	return select(nullptr);
+}
+
+Handles* BTreeTable::select(const ValueDict* where)
+{
+	Handles* ret_handles = new Handles;
+
+	KeyValue* min_value;
+	KeyValue* max_value;
+	ValueDict* additional_where;
+
+	make_range(where, min_value, max_value, additional_where);
+
+	Handles* tkeys = index->range(min_value, max_value);
+	for (auto tkey : *tkeys)
+	{
+		if (additional_where == nullptr || selected(tkey, additional_where))
+		{
+			ret_handles->push_back(tkey);
+		}
+	}
+	return ret_handles;
+}
+
+Handles* BTreeTable::select(Handles *current_selection, const ValueDict* where)
+{
+	Handles* ret_handles = new Handles;
+
+	KeyValue* min_value;
+	KeyValue* max_value;
+	ValueDict* additional_where;
+
+	make_range(where, min_value, max_value, additional_where);
+
+	for (auto tkey : *current_selection)
+	{
+		if (additional_where == nullptr || selected(tkey, additional_where))
+		{
+			ret_handles->push_back(tkey);
+		}
+	}
+	return ret_handles;
+}
+
+ValueDict* BTreeTable::project(Handle handle)	// handle == tkey
+{
+	int count = 0;
+	ValueDict* p_tkey = new ValueDict;
+
+	for (auto c_name : column_names)
+	{
+		(*p_tkey)[c_name] = handle.key_value[count];
+		++count;
+	}
+
+	ValueDict* p_row = index->lookup_value(p_tkey);
+
+	if (p_row->empty())
+	{
+		throw DbRelationError("Cannot project: invalid handle");
+	}
+
+	// row copy, avoid corrupting reference to original
+	ValueDict* p_row_copy = new ValueDict;
+	p_row_copy = p_row;
+
+	for (auto thing : *p_tkey)
+	{
+		(*p_row_copy)[thing.first] = thing.second;
+	}
+
+	return p_row_copy;
+}
+
+ValueDict* BTreeTable::project(Handle handle, const ColumnNames* column_names)
+{
+	ValueDict* ret_row = new ValueDict;
+	ColumnNames key_columns;
+	ColumnNames non_key_columns;
+
+	int count = 0;
+	ValueDict* p_tkey = new ValueDict;
+
+	for (auto c_name : *column_names)
+	{
+		if (find(primary_key->begin(), primary_key->end(), c_name) != primary_key->end())
+		{
+			key_columns.push_back(c_name);
+			(*p_tkey)[c_name] = handle.key_value[count];
+			++count;
+		}
+		else
+		{
+			non_key_columns.push_back(c_name);
+		}
+	}
+
+	if (!non_key_columns.empty())
+	{
+		ValueDict* p_row = index->lookup_value(p_tkey);
+		if (p_row->empty())
+		{
+			throw DbRelationError("Cannot project: invalid handle");
+		}
+		for (auto c_nk_name : non_key_columns)
+		{
+			(*ret_row)[c_nk_name] = (*p_row)[c_nk_name];
+		}
+	}
+	if (!key_columns.empty())
+	{
+		for (auto thing : *p_tkey)
+		{
+			if (find(column_names->begin(), column_names->end(), thing.first) != column_names->end())
+			{
+				(*ret_row)[thing.first] = thing.second;
+			}
+		}
+	}
+	return ret_row;
+}
+
+ValueDict* BTreeTable::validate(const ValueDict* row) const
+{
+	ValueDict* full_row = new ValueDict;
+
+	for (Identifier column_name : column_names)
+	{
+		if (row->find(column_name) == row->end())
+		{
+			throw DbRelationError("don't know how to handle NULLs, defaults, etc. yet");
+		}
+		else
+		{
+			Value v = row->at(column_name);
+			(*full_row)[column_name] = v;
+		}		
+	}
+
+	return full_row;
+}
+
+// checks if given record succeeds given where clause
+bool BTreeTable::selected(Handle handle, const ValueDict* where)
+{
+	// iterate through all the column names instead?
+	ValueDict* s_row = project(handle, where);
+	for (auto w : *where)
+	{
+		if ((*s_row)[w.first] != w.second)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 void BTreeTable::make_range(const ValueDict *where,
-	KeyValue *&minval, KeyValue *&maxval, ValueDict *&additional_where) {}
+	KeyValue *&minval, KeyValue *&maxval, ValueDict *&additional_where)
+{
+	if (where == nullptr)
+	{
+		minval = nullptr;
+		maxval = nullptr;
+		additional_where = nullptr;
+	}
+	else
+	{
+		*additional_where = *where;
+		KeyValue* tkey = new KeyValue;
+
+		for (auto c : *primary_key)
+		{
+
+			if (additional_where->find(c) != additional_where->end())
+			{
+				additional_where->erase(c);
+			}
+
+			if (where->find(c) != where->end())
+			{
+				tkey->push_back(where->at(c));
+			}
+		}
+		if (additional_where->empty())
+		{
+			delete additional_where;
+			additional_where = nullptr;
+		}
+
+		if (tkey->size() > 0)
+		{
+			minval = tkey;
+			maxval = tkey;
+		}
+		else
+		{
+			minval = nullptr;
+			maxval = nullptr;
+		}
+	}
+}
 
 
 bool test_btree() {

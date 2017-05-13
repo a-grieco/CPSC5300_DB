@@ -14,7 +14,25 @@
 #include "SQLExec.h"
 #include "btree.h"
 
+const bool RUN_TEST = true;
+
 void initialize_environment(char *envHome);
+
+// test cases run when RUN_TEST is set to true
+std::vector<std::string> test_cases = {
+	//"test",
+	"create table foo (id int, data text)",
+	"insert into foo values (1,\"one\");insert into foo values(2,\"two\"); insert into foo values (2, \"another two\")",
+	"select * from foo",
+	"create index fxx on foo (id)",
+	"show index from foo",
+	"delete from foo where data = \"two\"",
+	"select * from foo",
+	"create index fxx on foo (id)",
+	"show index from foo",
+	"insert into foo values (4,\"four\")",
+	"select * from foo"
+};
 
 
 int main(int argc, char *argv[]) {
@@ -25,10 +43,23 @@ int main(int argc, char *argv[]) {
     }
     initialize_environment(argv[1]);
 
+	// set RUN_TEST to true to run test cases
+	// (will allow additional SQL commands when complete)
+	int test_count = 0;
+
     while (true) {
         std::cout << "SQL> ";
         std::string query;
-        std::getline(std::cin, query);
+		if (RUN_TEST == true && test_count < test_cases.size())
+		{
+			query = test_cases.at(test_count);
+			std::cout << query << std::endl;
+			++test_count;
+		}
+		else
+		{
+			std::getline(std::cin, query);
+		}
         if (query.length() == 0)
             continue;
         if (query == "quit")

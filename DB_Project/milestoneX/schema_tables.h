@@ -28,6 +28,8 @@ public:
     virtual void del(Handle handle);
 
     virtual DbRelation& get_table(Identifier table_name);
+	// TRACK FIX
+	virtual DbRelation& get_table(Identifier table_name, ColumnNames* primary_key);
 
 private:
     static std::map<Identifier,DbRelation*> table_cache;

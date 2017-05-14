@@ -106,3 +106,4 @@ protected:
 };
 
 bool test_btree();
+bool test_table();

@@ -1,5 +1,6 @@
 
 #include "btree.h"
+#include <string>
 
 
 /************
@@ -313,7 +314,7 @@ BTreeTable::BTreeTable(Identifier table_name, ColumnNames column_names,
 	ColumnAttributes non_key_column_attributes;
 
 	int count = 0;
-	for (auto column_name : column_names)	
+	for (auto column_name : column_names)
 	{
 		if (std::find(primary_key.begin(), primary_key.end(), column_name)
 			== primary_key.end())
@@ -443,7 +444,7 @@ ValueDict* BTreeTable::project(Handle handle)	// handle == tkey
 	int count = 0;
 	ValueDict* p_tkey = new ValueDict;
 
-	for (auto c_name : column_names)
+	for (auto c_name : *primary_key)
 	{
 		(*p_tkey)[c_name] = handle.key_value[count];
 		++count;
@@ -530,7 +531,7 @@ ValueDict* BTreeTable::validate(const ValueDict* row) const
 		{
 			Value v = row->at(column_name);
 			(*full_row)[column_name] = v;
-		}		
+		}
 	}
 
 	return full_row;
@@ -667,5 +668,100 @@ bool test_btree() {
 		}
 	index.drop();
 	table.drop();
+	return true;
+}
+
+bool test_table()
+{
+	//ColumnNames column_names;
+	//column_names.push_back("id");
+	//column_names.push_back("a");
+	//column_names.push_back("b");
+	//ColumnAttributes column_attributes;
+	//column_attributes.push_back(ColumnAttribute(ColumnAttribute::INT));
+	//column_attributes.push_back(ColumnAttribute(ColumnAttribute::INT));
+	//column_attributes.push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+	ColumnNames column_names = { "id", "a", "b" };
+	ColumnAttributes column_attributes = {
+		ColumnAttribute(ColumnAttribute::INT),
+		ColumnAttribute(ColumnAttribute::INT),
+		ColumnAttribute(ColumnAttribute::TEXT)
+	};
+	ColumnNames primary_key = { "id" };
+
+	BTreeTable table = BTreeTable("_test_btable", column_names, column_attributes, primary_key);
+	//table.create_if_not_exists();	
+									/* TODO: create_if_not_exists() & table.open() are broken
+									 * for the same reason, what is that reason?
+									 * Error thrown in HeapFile::db_open(uint flags)
+									 * (see heap_storage.cpp line 186 HeapFile::create(void){ bd_open(DB_CREATE|DB_EXCL); }
+									 */
+	table.create();
+	//table.close();
+	//table.open();
+
+	std::vector<ValueDict> rows;
+
+	std::vector<Value> _a = { 12, -192, 1000 };
+	std::vector<Value> _b = { "Hello!", "Much longer peice of text here", "" };	// TODO: make this long
+
+	int size = _a.size();
+	int id;
+
+	for (id = 0; id < 10 * size; ++id)
+	{
+		//std::cout << id << ". " << _a[id % size].n << " ";
+		//std::cout << _b[id % size].s << std::endl;
+		rows.push_back(ValueDict{ { "id", Value(id) },
+								  { "a", Value(_a[id % size]) },
+								  { "b", Value(_b[id % size]) } });
+	}
+
+	Handles handles;
+	std::vector<ValueDict> expected;
+	for (ValueDict& row : rows)
+	{
+		expected.push_back(row);
+		Handle ins_handle = table.insert(&row);
+		handles.push_back(ins_handle);
+	}
+
+	//Handles* x = table.select();
+	for(auto handle : (*table.select()))
+	{
+		ValueDict* row = table.project(handle);
+
+		Value& current_projected_row_id_value = row->at("id");
+		int cur_proj_row_id = current_projected_row_id_value.n;
+
+		ValueDict& val_dict_orig_inserted = expected[cur_proj_row_id];
+		Value& orig_inserted_row_id_value = val_dict_orig_inserted["id"];
+		int orig_inserted_row_id = orig_inserted_row_id_value.n;
+
+		if(cur_proj_row_id != orig_inserted_row_id)
+		{
+			return false;
+		}
+	}
+
+	size_t last = rows.size();
+	ValueDict actual_row = rows.at(last - 1);
+	
+	for(Handle x : *table.select(&actual_row))
+	{
+		ValueDict* zoopa = table.project(x);
+	}
+
+	rows[last - 1];
+	table.select();
+
+	//ValueDicts rows{
+	//	new ValueDict {{ "a", Value(12) }, {"b", Value("hello")}},
+	//	new ValueDict{ { "a", Value(12) },{ "b", Value("hello") } },
+	//	new ValueDict{ { "a", Value(12) },{ "b", Value("hello") } },
+	//};
+
+
 	return true;
 }

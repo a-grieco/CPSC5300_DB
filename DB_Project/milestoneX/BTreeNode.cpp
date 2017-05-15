@@ -209,6 +209,10 @@ BTreeInterior::~BTreeInterior() {
 
 // Get next block down in tree where key must be.
 BlockID BTreeInterior::find(const KeyValue* key) const {
+	if(key==nullptr)
+	{
+		return first;
+	}
     BlockID down = this->pointers.back();  // last pointer is correct if we don't find an earlier boundary
     for (uint i = 0; i < this->boundaries.size(); i++) {
         KeyValue *boundary = this->boundaries[i];

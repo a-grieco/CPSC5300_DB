@@ -1,6 +1,7 @@
 
 #include "btree.h"
 #include <string>
+#include <iterator>
 
 
 /************
@@ -217,10 +218,17 @@ void BTreeBase::build_key_profile() {
 }
 
 KeyValue *BTreeBase::tkey(const ValueDict *key) const {
-	KeyValue *kv = new KeyValue();
-	for (auto& col_name : this->key_columns)
-		kv->push_back(key->at(col_name));
-	return kv;
+	try
+	{
+		KeyValue *kv = new KeyValue();
+		for (auto& col_name : this->key_columns)
+			kv->push_back(key->at(col_name));
+		return kv;
+	}
+	catch (...)
+	{
+		return nullptr;
+	}
 }
 
 
@@ -402,9 +410,9 @@ Handles* BTreeTable::select(const ValueDict* where)
 {
 	Handles* ret_handles = new Handles;
 
-	KeyValue* min_value;
-	KeyValue* max_value;
-	ValueDict* additional_where;
+	KeyValue* min_value = new KeyValue;
+	KeyValue* max_value = new KeyValue;
+	ValueDict* additional_where = new ValueDict;
 
 	make_range(where, min_value, max_value, additional_where);
 
@@ -423,9 +431,9 @@ Handles* BTreeTable::select(Handles *current_selection, const ValueDict* where)
 {
 	Handles* ret_handles = new Handles;
 
-	KeyValue* min_value;
-	KeyValue* max_value;
-	ValueDict* additional_where;
+	KeyValue* min_value = new KeyValue;
+	KeyValue* max_value = new KeyValue;
+	ValueDict* additional_where = new ValueDict;
 
 	make_range(where, min_value, max_value, additional_where);
 
@@ -563,7 +571,13 @@ void BTreeTable::make_range(const ValueDict *where,
 	}
 	else
 	{
-		*additional_where = *where;
+		additional_where->clear();
+		additional_where->insert(where->begin(), where->end());
+
+
+		//std::insert_iterator<ValueDict> ins_iter(*additional_where);
+		//std::copy(where->begin(), where->end(), bii);
+		//*additional_where = ValueDict(*where);
 		KeyValue* tkey = new KeyValue;
 
 		for (auto c : *primary_key)
@@ -750,7 +764,11 @@ bool test_table()
 	
 	for(Handle x : *table.select(&actual_row))
 	{
-		ValueDict* zoopa = table.project(x);
+		ValueDict zoopa = *table.project(x);
+		if (zoopa != actual_row)
+		{
+			return false;
+		}
 	}
 
 	rows[last - 1];

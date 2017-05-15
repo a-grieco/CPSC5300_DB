@@ -41,6 +41,12 @@ protected:
 class SQLExec {
 public:
     static QueryResult *execute(const hsql::SQLStatement *statement) throw(SQLExecError);
+	static Tables& test_get_tables()
+	{
+		if (tables == nullptr)
+			tables = new Tables();
+		return *tables;
+	}
 
 protected:
     static Tables *tables;

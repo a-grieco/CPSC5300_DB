@@ -2,6 +2,8 @@
 #include "btree.h"
 #include <string>
 #include <iterator>
+#include "SQLExec.h"
+#include "ParseTreeToString.h"
 
 
 /************
@@ -447,7 +449,7 @@ Handles* BTreeTable::select(Handles *current_selection, const ValueDict* where)
 	return ret_handles;
 }
 
-ValueDict* BTreeTable::project(Handle handle)	// handle == tkey
+ValueDict* BTreeTable::getValueDict(Handle handle)
 {
 	int count = 0;
 	ValueDict* p_tkey = new ValueDict;
@@ -457,72 +459,41 @@ ValueDict* BTreeTable::project(Handle handle)	// handle == tkey
 		(*p_tkey)[c_name] = handle.key_value[count];
 		++count;
 	}
+	return p_tkey;
+}
 
-	ValueDict* p_row = index->lookup_value(p_tkey);
+ValueDict* BTreeTable::project(Handle handle)
+{
+	ValueDict* pk_dictionary = getValueDict(handle);
+	ValueDict* p_row_no_pk = index->lookup_value(pk_dictionary);	// everyting but pk
 
-	if (p_row->empty())
+	if (p_row_no_pk->empty())
 	{
 		throw DbRelationError("Cannot project: invalid handle");
 	}
 
-	// row copy, avoid corrupting reference to original
-	ValueDict* p_row_copy = new ValueDict;
-	p_row_copy = p_row;
-
-	for (auto thing : *p_tkey)
+	// add pks to this
+	for (auto thing : *pk_dictionary)
 	{
-		(*p_row_copy)[thing.first] = thing.second;
+		(*p_row_no_pk)[thing.first] = thing.second;
 	}
 
-	return p_row_copy;
+	return p_row_no_pk;
 }
 
 ValueDict* BTreeTable::project(Handle handle, const ColumnNames* column_names)
 {
-	ValueDict* ret_row = new ValueDict;
-	ColumnNames key_columns;
-	ColumnNames non_key_columns;
-
-	int count = 0;
-	ValueDict* p_tkey = new ValueDict;
+	ValueDict* full_row = project(handle);
+	ValueDict* result_row = new ValueDict;
 
 	for (auto c_name : *column_names)
 	{
-		if (find(primary_key->begin(), primary_key->end(), c_name) != primary_key->end())
+		if (full_row->find(c_name) != full_row->end())
 		{
-			key_columns.push_back(c_name);
-			(*p_tkey)[c_name] = handle.key_value[count];
-			++count;
-		}
-		else
-		{
-			non_key_columns.push_back(c_name);
+			(*result_row)[c_name] = (*full_row)[c_name];
 		}
 	}
-
-	if (!non_key_columns.empty())
-	{
-		ValueDict* p_row = index->lookup_value(p_tkey);
-		if (p_row->empty())
-		{
-			throw DbRelationError("Cannot project: invalid handle");
-		}
-		for (auto c_nk_name : non_key_columns)
-		{
-			(*ret_row)[c_nk_name] = (*p_row)[c_nk_name];
-		}
-	}
-	if (!key_columns.empty())
-	{
-		for (auto thing : *p_tkey)
-		{
-			if (find(column_names->begin(), column_names->end(), thing.first) != column_names->end())
-			{
-				(*ret_row)[thing.first] = thing.second;
-			}
-		}
-	}
-	return ret_row;
+	return result_row;
 }
 
 ValueDict* BTreeTable::validate(const ValueDict* row) const
@@ -685,35 +656,75 @@ bool test_btree() {
 	return true;
 }
 
+void run_test_statement(std::string sql) {
+
+	hsql::SQLParserResult *parse = hsql::SQLParser::parseSQLString(sql);
+
+	auto statement = parse->getStatement(0);
+	std::cout << ParseTreeToString::statement(statement) << std::endl;
+	try
+	{
+		QueryResult *result = SQLExec::execute(statement);
+		std::cout << *result << std::endl;
+
+	}
+	catch (std::exception& e)
+	{
+		std::cout << "Exception running the test statement: " << e.what() << std::endl;
+	}
+}
+
+std::ostream& operator<<(std::ostream& strm, const Value& val){
+	switch (val.data_type)
+	{
+	case ColumnAttribute::INT: return strm << val.n;
+	case ColumnAttribute::TEXT: return strm << val.s;
+	case ColumnAttribute::BOOLEAN: return strm << "don't know how to print bools";
+	default: return strm << "huh???";
+	}
+	return strm;
+}
+
+std::ostream& operator<<(std::ostream& strm, const Handle& h){
+	
+	for (const Value& val : h.key_value)
+	{
+		strm << val << " ";
+	}
+	return strm;
+}
+
 bool test_table()
 {
-	//ColumnNames column_names;
-	//column_names.push_back("id");
-	//column_names.push_back("a");
-	//column_names.push_back("b");
-	//ColumnAttributes column_attributes;
-	//column_attributes.push_back(ColumnAttribute(ColumnAttribute::INT));
-	//column_attributes.push_back(ColumnAttribute(ColumnAttribute::INT));
-	//column_attributes.push_back(ColumnAttribute(ColumnAttribute::TEXT));
+	//ColumnNames column_names = { "id", "a", "b" };
+	//ColumnAttributes column_attributes = {
+	//	ColumnAttribute(ColumnAttribute::INT),
+	//	ColumnAttribute(ColumnAttribute::INT),
+	//	ColumnAttribute(ColumnAttribute::TEXT)
+	//};
+	//ColumnNames primary_key = { "id" };
 
-	ColumnNames column_names = { "id", "a", "b" };
-	ColumnAttributes column_attributes = {
-		ColumnAttribute(ColumnAttribute::INT),
-		ColumnAttribute(ColumnAttribute::INT),
-		ColumnAttribute(ColumnAttribute::TEXT)
-	};
-	ColumnNames primary_key = { "id" };
-
-	BTreeTable table = BTreeTable("_test_btable", column_names, column_attributes, primary_key);
-	//table.create_if_not_exists();	
-									/* TODO: create_if_not_exists() & table.open() are broken
-									 * for the same reason, what is that reason?
-									 * Error thrown in HeapFile::db_open(uint flags)
-									 * (see heap_storage.cpp line 186 HeapFile::create(void){ bd_open(DB_CREATE|DB_EXCL); }
-									 */
-	table.create();
+	//BTreeTable table = BTreeTable("_test_btable", column_names, column_attributes, primary_key);
+	////table.create_if_not_exists();	
+	//								/* TODO: create_f_not_exists() & table.open() are broken
+	//								 * for the same reason, what is that reason?
+	//								 * Error thrown in HeapFile::db_open(uint flags)
+	//								 * (see heap_storage.cpp line 186 HeapFile::create(void){ bd_open(DB_CREATE|DB_EXCL); }
+	//								 */
+	//table.create();
 	//table.close();
 	//table.open();
+
+
+	// for now use statement to create the table so that we can test
+	run_test_statement("drop table _test_btable");
+	run_test_statement("create table _test_btable(id int, a int, b text, primary key(id))");
+	run_test_statement("show tables");
+
+	// simulate creating a local BTreeTable
+	DbRelation& rel = SQLExec::test_get_tables().get_table("_test_btable");
+	BTreeTable& table = *static_cast<BTreeTable*>(&rel);
+
 
 	std::vector<ValueDict> rows;
 
@@ -721,16 +732,14 @@ bool test_table()
 	std::vector<Value> _b = { "Hello!", "Much longer peice of text here", "" };	// TODO: make this long
 
 	int size = _a.size();
-	int id;
-
-	for (id = 0; id < 10 * size; ++id)
+	for (int id = 0; id < 10 * size; ++id)
 	{
-		//std::cout << id << ". " << _a[id % size].n << " ";
-		//std::cout << _b[id % size].s << std::endl;
 		rows.push_back(ValueDict{ { "id", Value(id) },
 								  { "a", Value(_a[id % size]) },
 								  { "b", Value(_b[id % size]) } });
 	}
+
+
 
 	Handles handles;
 	std::vector<ValueDict> expected;
@@ -741,8 +750,10 @@ bool test_table()
 		handles.push_back(ins_handle);
 	}
 
-	//Handles* x = table.select();
-	for(auto handle : (*table.select()))
+	std::cout << "Just inserted " << rows.size() << " records. Table contents: " << std::endl;
+	run_test_statement("select * from _test_btable;");
+
+	for (auto handle : (*table.select()))
 	{
 		ValueDict* row = table.project(handle);
 
@@ -753,7 +764,7 @@ bool test_table()
 		Value& orig_inserted_row_id_value = val_dict_orig_inserted["id"];
 		int orig_inserted_row_id = orig_inserted_row_id_value.n;
 
-		if(cur_proj_row_id != orig_inserted_row_id)
+		if (cur_proj_row_id != orig_inserted_row_id)
 		{
 			return false;
 		}
@@ -761,25 +772,43 @@ bool test_table()
 
 	size_t last = rows.size();
 	ValueDict actual_row = rows.at(last - 1);
-	
-	for(Handle x : *table.select(&actual_row))
+	Handle del_handle;
+
+	for (Handle handle : *table.select(&actual_row))
 	{
-		ValueDict zoopa = *table.project(x);
-		if (zoopa != actual_row)
+		if (*table.project(handle) != actual_row)
 		{
 			return false;
 		}
 	}
 
-	rows[last - 1];
-	table.select();
+	del_handle = table.select(&actual_row)->back();
+	table.del(del_handle);
+	last = rows.size();
+	actual_row = rows.at(last - 1);
 
-	//ValueDicts rows{
-	//	new ValueDict {{ "a", Value(12) }, {"b", Value("hello")}},
-	//	new ValueDict{ { "a", Value(12) },{ "b", Value("hello") } },
-	//	new ValueDict{ { "a", Value(12) },{ "b", Value("hello") } },
-	//};
+	for (Handle handle : *table.select(&actual_row))
+	{
+		if (*table.project(handle) != actual_row)
+		{
+			return false;
+		}
+	}
 
+	del_handle = table.select(&actual_row)->back();
+	table.del(del_handle);
+	actual_row = rows.at(0);
+
+	std::cout << " Deleting last handle: " << del_handle << std::endl;
+	run_test_statement("select * from _test_btable");
+
+	for (Handle handle : *table.select(&actual_row))
+	{
+		if (*table.project(handle) != actual_row)
+		{
+			return false;
+		}
+	}
 
 	return true;
 }

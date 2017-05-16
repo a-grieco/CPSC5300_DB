@@ -101,7 +101,7 @@ public:
     virtual void save();
 
     virtual Insertion split(BTreeLeafBase *new_leaf, const KeyValue* key, BTreeLeafValue value);
-    virtual LeafMap const& get_key_map() const { return this->key_map; }
+    virtual LeafMap& get_key_map() { return this->key_map; }
     virtual BlockID get_next_leaf() const { return this->next_leaf; }
 
 protected:

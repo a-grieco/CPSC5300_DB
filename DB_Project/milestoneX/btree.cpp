@@ -5,6 +5,9 @@
 #include "SQLExec.h"
 #include "ParseTreeToString.h"
 
+std::ostream& operator<<(std::ostream& strm, const Value& val);
+std::ostream& operator<<(std::ostream& strm, const Handle& h);
+
 
 /************
  * BTreeBase
@@ -198,17 +201,19 @@ BTreeNode *BTreeBase::find(BTreeInterior *node, uint height, const KeyValue* key
 // Delete an index entry
 void BTreeBase::del(Handle handle)
 {
-	KeyValue* d_tkey = tkey(relation.project(handle));
+	KeyValue* d_tkey = &handle.key_value;
 	BTreeLeafBase* leaf = _lookup(root, stat->get_height(), d_tkey);
 
-	LeafMap leaf_keys = leaf->get_key_map();
+	LeafMap& leaf_keys = leaf->get_key_map();
 	if (leaf_keys.find(*d_tkey) == leaf_keys.end())
 	{
 		throw DbRelationError("key to be deleted not found in index");
 	}
 
-	leaf_keys.erase(*d_tkey);
+	size_t x = leaf_keys.erase(*d_tkey);
 	leaf->save();
+
+	std::cout << "BTreeBase::del(Handle handle) called " << handle << " # elements erased: " << x << std::endl;
 }
 
 // Figure out the data types of each key component and encode them in self.key_profile
@@ -674,7 +679,7 @@ void run_test_statement(std::string sql) {
 	}
 }
 
-std::ostream& operator<<(std::ostream& strm, const Value& val){
+std::ostream& operator<<(std::ostream& strm, const Value& val) {
 	switch (val.data_type)
 	{
 	case ColumnAttribute::INT: return strm << val.n;
@@ -685,8 +690,8 @@ std::ostream& operator<<(std::ostream& strm, const Value& val){
 	return strm;
 }
 
-std::ostream& operator<<(std::ostream& strm, const Handle& h){
-	
+std::ostream& operator<<(std::ostream& strm, const Handle& h) {
+
 	for (const Value& val : h.key_value)
 	{
 		strm << val << " ";
@@ -725,11 +730,10 @@ bool test_table()
 	DbRelation& rel = SQLExec::test_get_tables().get_table("_test_btable");
 	BTreeTable& table = *static_cast<BTreeTable*>(&rel);
 
-
 	std::vector<ValueDict> rows;
 
 	std::vector<Value> _a = { 12, -192, 1000 };
-	std::vector<Value> _b = { "Hello!", "Much longer peice of text here", "" };	// TODO: make this long
+	std::vector<Value> _b = { "Hello!", "Much longer peice of text here ", "" };
 
 	int size = _a.size();
 	for (int id = 0; id < 10 * size; ++id)
@@ -738,8 +742,6 @@ bool test_table()
 								  { "a", Value(_a[id % size]) },
 								  { "b", Value(_b[id % size]) } });
 	}
-
-
 
 	Handles handles;
 	std::vector<ValueDict> expected;
@@ -770,45 +772,57 @@ bool test_table()
 		}
 	}
 
-	size_t last = rows.size();
-	ValueDict actual_row = rows.at(last - 1);
+	int count = 0;
+	for (Handle handle : *table.select())
+	{
+		if ((*table.project(handle))["id"].n != rows.at(count)["id"].n)
+		{
+			return false;
+		}
+		count++;
+	}
+
 	Handle del_handle;
-
-	for (Handle handle : *table.select(&actual_row))
-	{
-		if (*table.project(handle) != actual_row)
-		{
-			return false;
-		}
-	}
-
-	del_handle = table.select(&actual_row)->back();
+	del_handle = table.select()->back();
 	table.del(del_handle);
-	last = rows.size();
-	actual_row = rows.at(last - 1);
-
-	for (Handle handle : *table.select(&actual_row))
-	{
-		if (*table.project(handle) != actual_row)
-		{
-			return false;
-		}
-	}
-
-	del_handle = table.select(&actual_row)->back();
-	table.del(del_handle);
-	actual_row = rows.at(0);
 
 	std::cout << " Deleting last handle: " << del_handle << std::endl;
 	run_test_statement("select * from _test_btable");
 
-	for (Handle handle : *table.select(&actual_row))
+	count = 0;
+	for (Handle handle : *table.select())
 	{
-		if (*table.project(handle) != actual_row)
+
+		if ((*table.project(handle))["a"].n != rows.at(count)["a"].n)
 		{
 			return false;
 		}
+		count++;
 	}
+
+	del_handle = table.select()->back();
+	table.del(del_handle);
+
+	std::cout << " Deleting last handle: " << del_handle << std::endl;
+	run_test_statement("select * from _test_btable");
+
+	count = 0;
+	for (Handle handle : *table.select())
+	{
+
+		if ((*table.project(handle))["b"].s != rows.at(count)["b"].s)
+		{
+			return false;
+		}
+		count++;
+	}
+
+	if (count != (*table.select()).size())
+	{
+		return false;
+	}
+
+	table.drop();
 
 	return true;
 }

@@ -21,23 +21,44 @@ void initialize_environment(char *envHome);
 // test cases run when RUN_TEST is set to true
 std::vector<std::string> test_cases = { 
 	"test",
-	//"drop table foo",
-	//"create table foo (id int, x int, y int, data text, primary key (id, x))",
-	//"select * from _columns",
-	//"insert into foo values (1, 2, 3, \"one\")",
-	//"insert into foo values (2, 3, 4, \"two\")",
-	//"insert into foo values (2, 4, 8, \"another two\")",
-	//"select * from foo",
-
-	//"CREATE TABLE bt (id INT, data TEXT, PRIMARY KEY(id))",
-	//"INSERT INTO bt VALUES (1,\"one\")",
-	//"INSERT INTO bt (data,id) VALUES (\"Two\",2)",
-	//"INSERT INTO bt VALUES (3,\"three\")",
-	//"SELECT * FROM bt",
-	//"SELECT * FROM bt WHERE data=\"one\"",
-	//"SELECT data FROM bt WHERE id=2",
-	//"DELETE FROM bt WHERE id=2",
-	//"SELECT * FROM bt"
+	"SHOW TABLES",
+	"SHOW COLUMNS FROM _tables",
+	"CREATE TABLE hsy67(a INT, b TEXT, c INT)",
+	"SHOW COLUMNS FROM hsy67",
+	"SHOW TABLES",
+	"CREATE TABLE abcdefg (abb INT, b_$cx TEXT, ara999 INT)",
+	"DROP TABLE hsy67",
+	"SHOW TABLES",
+	"SELECT * FROM _columns",
+	"CREATE INDEX bmy ON abcdefg USING HASH (abb, b_$cx)",
+	"CREATE INDEX xxy ON abcdefg USING BTREE (b_$cx)",
+	"SHOW INDEX FROM abcdefg",
+	"DROP INDEX bmy FROM abcdefg",
+	"CREATE TABLE foo (id INT, data TEXT)",
+	"INSERT INTO foo VALUES (1, \"one\")",
+	"INSERT INTO foo (data, id) VALUES (\"Two\", 2)",
+	"INSERT INTO foo VALUES (3, \"three\")",
+	"SELECT * FROM foo WHERE data = \"one\"",
+	"SELECT data FROM foo WHERE id = 2",
+	"CREATE INDEX fx ON foo USING BTREE (id)",
+	"SHOW INDEX FROM foo",
+	"SELECT * FROM foo WHERE data = \"one\"",
+	"SELECT * FROM foo WHERE id = 2",
+	"DELETE FROM foo WHERE id = 3",
+	"INSERT INTO foo VALUES (4, \"four\")",
+	"SELECT * FROM foo",
+	"SELECT * FROM foo WHERE id = 4",
+	"SELECT * FROM foo WHERE id = 3",
+	"CREATE TABLE bt (id INT, data TEXT, PRIMARY KEY (id))",
+	"INSERT INTO bt VALUES (1, \"one\")",
+	"INSERT INTO bt (data, id) VALUES (\"Two\", 2)",
+	"INSERT INTO bt VALUES (3, \"three\")",
+	"SELECT * FROM bt",
+	"SELECT * FROM bt WHERE data = \"one\"",
+	"SELECT data FROM bt WHERE id = 2",
+	"DELETE FROM bt WHERE id = 2",
+	"SELECT * FROM bt",
+	"DROP TABLE bt"
 };
 
 
@@ -59,7 +80,7 @@ int main(int argc, char *argv[]) {
 		if (RUN_TEST == true && test_count < test_cases.size())
 		{
 			query = test_cases.at(test_count);
-			std::cout << query << std::endl;
+			//std::cout << query << std::endl;
 			++test_count;
 		}
 		else
@@ -72,9 +93,7 @@ int main(int argc, char *argv[]) {
 			break;
 		if (query == "test") {
 			std::cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << std::endl;
-			//TODO uncomment this...
-			//std::cout << "test_btree: " << (test_btree() ? "ok" : "failed") << std::endl;
-			std::cout << "DON'T FORGET TO ADD test_btree BACK IN" << std::endl;
+			std::cout << "test_btree: " << (test_btree() ? "ok" : "failed") << std::endl;
 			std::cout << "test_table: " << (test_table() ? "ok" : "failed") << std::endl;
 			continue;
 		}
@@ -101,8 +120,6 @@ int main(int argc, char *argv[]) {
 		}
 		delete parse;
 	}
-
-	std::cout << "RED PANDAS ARE THE BEST!!!" << std::endl;
 
 	return EXIT_SUCCESS;
 }

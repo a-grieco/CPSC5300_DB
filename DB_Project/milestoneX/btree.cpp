@@ -128,7 +128,7 @@ Handles* BTreeBase::_range(KeyValue *tmin, KeyValue *tmax, bool return_keys) {
 	BlockID next_leaf_id = start->get_next_leaf();
 	while (next_leaf_id > 0) {
 		BTreeLeafBase *next_leaf = this->make_leaf(next_leaf_id, false);
-		for (auto const& mval : start->get_key_map()) {
+		for (auto const& mval : next_leaf->get_key_map()) {
 			if (tmax != nullptr && mval.first > *tmax)
 				return results;
 			if (return_keys)
@@ -210,10 +210,10 @@ void BTreeBase::del(Handle handle)
 		throw DbRelationError("key to be deleted not found in index");
 	}
 
-	size_t x = leaf_keys.erase(*d_tkey);
+	leaf_keys.erase(*d_tkey);
 	leaf->save();
 
-	std::cout << "BTreeBase::del(Handle handle) called " << handle << " # elements erased: " << x << std::endl;
+	//std::cout << "BTreeBase::del(Handle handle) called " << handle << " # elements erased: " << x << std::endl;	//FIXME delete
 }
 
 // Figure out the data types of each key component and encode them in self.key_profile
@@ -303,7 +303,6 @@ ValueDict* BTreeFile::lookup_value(ValueDict* key_dict) {
 	BTreeLeafBase *leaf = _lookup(this->root, this->stat->get_height(), key);
 	BTreeLeafValue value = leaf->find_eq(key);
 	return value.vd;
-	delete key;
 }
 
 // Insert a row with the given handle. Row must exist in relation already.
@@ -415,21 +414,46 @@ Handles* BTreeTable::select()
 
 Handles* BTreeTable::select(const ValueDict* where)
 {
-	Handles* ret_handles = new Handles;
-
+	Handles* ret_handles = new Handles;;
 	KeyValue* min_value = new KeyValue;
 	KeyValue* max_value = new KeyValue;
 	ValueDict* additional_where = new ValueDict;
 
-	make_range(where, min_value, max_value, additional_where);
-
-	Handles* tkeys = index->range(min_value, max_value);
-	for (auto tkey : *tkeys)
-	{
-		if (additional_where == nullptr || selected(tkey, additional_where))
+	bool where_is_primary_key = true;
+	if (where != nullptr) {
+		for (auto w : *where)
 		{
-			ret_handles->push_back(tkey);
+			if (std::find(primary_key->begin(), primary_key->end(), w.first) == primary_key->end())
+			{
+				where_is_primary_key = false;
+			}
 		}
+	}
+
+	if (where_is_primary_key) {
+		make_range(where, min_value, max_value, additional_where);
+
+		Handles* tkeys = index->range(min_value, max_value);
+		for (auto tkey : *tkeys)
+		{
+			if (additional_where == nullptr || selected(tkey, additional_where))
+			{
+				ret_handles->push_back(tkey);
+			}
+		}
+	}
+	// if where is not a pk (select * from bt) then filter
+	else
+	{
+		Handles* all_handles = select();
+		for (Handle handle : *all_handles)
+		{
+			if (selected(handle, where))
+			{
+				ret_handles->push_back(handle);
+			}
+		}
+
 	}
 	return ret_handles;
 }
@@ -452,6 +476,7 @@ Handles* BTreeTable::select(Handles *current_selection, const ValueDict* where)
 		}
 	}
 	return ret_handles;
+
 }
 
 ValueDict* BTreeTable::getValueDict(Handle handle)
@@ -524,7 +549,6 @@ ValueDict* BTreeTable::validate(const ValueDict* row) const
 // checks if given record succeeds given where clause
 bool BTreeTable::selected(Handle handle, const ValueDict* where)
 {
-	// iterate through all the column names instead?
 	ValueDict* s_row = project(handle, where);
 	for (auto w : *where)
 	{
@@ -550,10 +574,6 @@ void BTreeTable::make_range(const ValueDict *where,
 		additional_where->clear();
 		additional_where->insert(where->begin(), where->end());
 
-
-		//std::insert_iterator<ValueDict> ins_iter(*additional_where);
-		//std::copy(where->begin(), where->end(), bii);
-		//*additional_where = ValueDict(*where);
 		KeyValue* tkey = new KeyValue;
 
 		for (auto c : *primary_key)
@@ -701,34 +721,34 @@ std::ostream& operator<<(std::ostream& strm, const Handle& h) {
 
 bool test_table()
 {
-	//ColumnNames column_names = { "id", "a", "b" };
-	//ColumnAttributes column_attributes = {
-	//	ColumnAttribute(ColumnAttribute::INT),
-	//	ColumnAttribute(ColumnAttribute::INT),
-	//	ColumnAttribute(ColumnAttribute::TEXT)
-	//};
-	//ColumnNames primary_key = { "id" };
+	ColumnNames column_names = { "id", "a", "b" };
+	ColumnAttributes column_attributes = {
+		ColumnAttribute(ColumnAttribute::INT),
+		ColumnAttribute(ColumnAttribute::INT),
+		ColumnAttribute(ColumnAttribute::TEXT)
+	};
+	ColumnNames primary_key = { "id" };
 
-	//BTreeTable table = BTreeTable("_test_btable", column_names, column_attributes, primary_key);
-	////table.create_if_not_exists();	
-	//								/* TODO: create_f_not_exists() & table.open() are broken
-	//								 * for the same reason, what is that reason?
-	//								 * Error thrown in HeapFile::db_open(uint flags)
-	//								 * (see heap_storage.cpp line 186 HeapFile::create(void){ bd_open(DB_CREATE|DB_EXCL); }
-	//								 */
-	//table.create();
+	BTreeTable table = BTreeTable("_test_btable", column_names, column_attributes, primary_key);
+	//table.create_if_not_exists();	
+									/* TODO: create_f_not_exists() & table.open() are broken
+									 * for the same reason, what is that reason?
+									 * Error thrown in HeapFile::db_open(uint flags)
+									 * (see heap_storage.cpp line 186 HeapFile::create(void){ bd_open(DB_CREATE|DB_EXCL); }
+									 */
+	table.create();
 	//table.close();
 	//table.open();
 
 
-	// for now use statement to create the table so that we can test
-	run_test_statement("drop table _test_btable");
-	run_test_statement("create table _test_btable(id int, a int, b text, primary key(id))");
-	run_test_statement("show tables");
+	//// for now use statement to create the table so that we can test
+	//run_test_statement("drop table _test_btable");
+	//run_test_statement("create table _test_btable(id int, a int, b text, primary key(id))");
+	//run_test_statement("show tables");
 
-	// simulate creating a local BTreeTable
-	DbRelation& rel = SQLExec::test_get_tables().get_table("_test_btable");
-	BTreeTable& table = *static_cast<BTreeTable*>(&rel);
+	//// simulate creating a local BTreeTable
+	//DbRelation& rel = SQLExec::test_get_tables().get_table("_test_btable");
+	//BTreeTable& table = *static_cast<BTreeTable*>(&rel);
 
 	std::vector<ValueDict> rows;
 
@@ -752,8 +772,8 @@ bool test_table()
 		handles.push_back(ins_handle);
 	}
 
-	std::cout << "Just inserted " << rows.size() << " records. Table contents: " << std::endl;
-	run_test_statement("select * from _test_btable;");
+	//std::cout << "Just inserted " << rows.size() << " records. Table contents: " << std::endl;
+	//run_test_statement("select * from _test_btable;");
 
 	for (auto handle : (*table.select()))
 	{
@@ -786,13 +806,12 @@ bool test_table()
 	del_handle = table.select()->back();
 	table.del(del_handle);
 
-	std::cout << " Deleting last handle: " << del_handle << std::endl;
-	run_test_statement("select * from _test_btable");
+	//std::cout << " Deleting last handle: " << del_handle << std::endl;
+	//run_test_statement("select * from _test_btable");
 
 	count = 0;
 	for (Handle handle : *table.select())
 	{
-
 		if ((*table.project(handle))["a"].n != rows.at(count)["a"].n)
 		{
 			return false;
@@ -803,13 +822,12 @@ bool test_table()
 	del_handle = table.select()->back();
 	table.del(del_handle);
 
-	std::cout << " Deleting last handle: " << del_handle << std::endl;
-	run_test_statement("select * from _test_btable");
+	//std::cout << " Deleting last handle: " << del_handle << std::endl;
+	//run_test_statement("select * from _test_btable");
 
 	count = 0;
 	for (Handle handle : *table.select())
 	{
-
 		if ((*table.project(handle))["b"].s != rows.at(count)["b"].s)
 		{
 			return false;

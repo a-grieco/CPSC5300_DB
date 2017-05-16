@@ -2,6 +2,7 @@
 
 #include "storage_engine.h"
 #include "heap_storage.h"
+#include <memory.h>
 
 typedef std::vector<ColumnAttribute::DataType> KeyProfile;
 typedef std::vector<BlockID> BlockPointers;

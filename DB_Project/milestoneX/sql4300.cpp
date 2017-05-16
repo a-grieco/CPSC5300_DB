@@ -14,13 +14,12 @@
 #include "SQLExec.h"
 #include "btree.h"
 
-const bool RUN_TEST = true;
+const bool RUN_TEST = false;
 
 void initialize_environment(char *envHome);
 
 // test cases run when RUN_TEST is set to true
 std::vector<std::string> test_cases = { 
-	"test",
 	"SHOW TABLES",
 	"SHOW COLUMNS FROM _tables",
 	"CREATE TABLE hsy67(a INT, b TEXT, c INT)",
@@ -38,6 +37,7 @@ std::vector<std::string> test_cases = {
 	"INSERT INTO foo VALUES (1, \"one\")",
 	"INSERT INTO foo (data, id) VALUES (\"Two\", 2)",
 	"INSERT INTO foo VALUES (3, \"three\")",
+	"SELECT * FROM foo",
 	"SELECT * FROM foo WHERE data = \"one\"",
 	"SELECT data FROM foo WHERE id = 2",
 	"CREATE INDEX fx ON foo USING BTREE (id)",
@@ -54,10 +54,10 @@ std::vector<std::string> test_cases = {
 	"INSERT INTO bt (data, id) VALUES (\"Two\", 2)",
 	"INSERT INTO bt VALUES (3, \"three\")",
 	"SELECT * FROM bt",
-	"SELECT * FROM bt WHERE data = \"one\"",
-	"SELECT data FROM bt WHERE id = 2",
-	"DELETE FROM bt WHERE id = 2",
-	"SELECT * FROM bt",
+	//"SELECT * FROM bt WHERE data = \"one\"",
+	//"SELECT data FROM bt WHERE id = 2",
+	//"DELETE FROM bt WHERE id = 2",
+	//"SELECT * FROM bt",
 	"DROP TABLE bt"
 };
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
 			break;
 		if (query == "test") {
 			std::cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << std::endl;
-			std::cout << "test_btree: " << (test_btree() ? "ok" : "failed") << std::endl;
+			std::cout << "test_btree: " << (test_btree() ? "ok" : "failed") << std::endl;	//TODO uncommment
 			std::cout << "test_table: " << (test_table() ? "ok" : "failed") << std::endl;
 			continue;
 		}

@@ -231,12 +231,11 @@ Columns::Columns() : HeapTable(TABLE_NAME, COLUMN_NAMES(), COLUMN_ATTRIBUTES()) 
 void Columns::create() {
 	HeapTable::create();
 	ValueDict row;
-	row["data_type"] = Value("TEXT");  // all these are TEXT fields
+	row["data_type"] = Value("TEXT");  // most all these are TEXT fields
 	row["primary_key_seq"] = 0;        // all these have no primary key
 	row["table_name"] = Value("_tables");
 	row["column_name"] = Value("table_name");
 	insert(&row);
-
 	row["column_name"] = Value("storage_engine");
 	insert(&row);
 
@@ -247,7 +246,11 @@ void Columns::create() {
 	insert(&row);
 	row["column_name"] = Value("data_type");
 	insert(&row);
+	row["column_name"] = Value("primary_key_seq");
+	row["data_type"] = Value("INT");
+	insert(&row);
 
+	row["data_type"] = Value("TEXT");
 	row["table_name"] = Value("_indices");
 	row["column_name"] = Value("table_name");
 	insert(&row);
